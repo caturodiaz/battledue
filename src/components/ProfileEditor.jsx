@@ -475,7 +475,7 @@ function ProfileEditor({
         <div className="profile-editor-grid">
 
           <label className="field">
-            Título de combate
+            Nombre del personaje
 
             <input
               value={profile.title}

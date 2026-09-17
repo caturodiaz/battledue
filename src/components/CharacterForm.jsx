@@ -27,7 +27,7 @@ function CharacterForm({
   const handleSubmit = (event) => {
     event.preventDefault()
 
-    if (!values.name.trim()) {
+    if (!String(values.name || '').trim()) {
       setError('El nombre es obligatorio.')
       return
     }
@@ -35,19 +35,34 @@ function CharacterForm({
     const cleanedCharacter = {
       ...values,
 
-      name: values.name.trim(),
+      name: String(values.name || '').trim(),
 
-      image: values.image?.trim() || '',
-      age: values.age?.trim() || '',
-      gender: values.gender?.trim() || '',
-      species: values.species?.trim() || '',
-      alignment: values.alignment?.trim() || '',
-      power: values.power?.trim() || '',
-      weapon: values.weapon?.trim() || '',
+      image: String(values.image || '').trim(),
 
-      abilities: values.abilities
-        .map((item) => item.trim())
-        .filter(Boolean),
+      age:
+        values.age === '' ||
+        values.age === null ||
+        values.age === undefined
+          ? ''
+          : Number(values.age),
+
+      gender: String(values.gender || '').trim(),
+
+      species: String(values.species || '').trim(),
+
+      alignment: String(values.alignment || '').trim(),
+
+      power: String(values.power || '').trim(),
+
+      weapon: String(values.weapon || '').trim(),
+
+      abilities: Array.isArray(values.abilities)
+        ? values.abilities
+            .map((item) =>
+              String(item).trim()
+            )
+            .filter(Boolean)
+        : [],
     }
 
     onSave(cleanedCharacter)
@@ -57,6 +72,7 @@ function CharacterForm({
     <section className="form-panel">
 
       <div className="form-header">
+
         <div>
           <p className="eyebrow">
             Administrador
@@ -77,6 +93,7 @@ function CharacterForm({
         >
           ×
         </button>
+
       </div>
 
       <form
@@ -95,7 +112,9 @@ function CharacterForm({
               <input
                 name={name}
                 type={type}
-                value={values[name] || ''}
+                value={
+                  values[name] ?? ''
+                }
                 onChange={(event) =>
                   updateValue(
                     name,
@@ -111,7 +130,13 @@ function CharacterForm({
           Habilidades
 
           <input
-            value={values.abilities.join(', ')}
+            value={
+              Array.isArray(
+                values.abilities
+              )
+                ? values.abilities.join(', ')
+                : ''
+            }
             onChange={(event) =>
               updateValue(
                 'abilities',
@@ -148,6 +173,7 @@ function CharacterForm({
         </div>
 
       </form>
+
     </section>
   )
 }

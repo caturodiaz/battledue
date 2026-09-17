@@ -1,30 +1,95 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import CharacterProfile from '../components/CharacterProfile'
 import ProfileEditor from '../components/ProfileEditor'
 import { profileDefaults } from '../data/profileDefaults'
 import { useCharacters } from '../hooks/useCharacters'
 
 function ProfilesPage() {
-  const { characters, editCharacter } = useCharacters()
+  const {
+    characters,
+    editCharacter,
+    isLoading,
+    error,
+  } = useCharacters()
 
-  const [selectedId, setSelectedId] = useState(
-    characters[0]?.id || ''
-  )
+  const [selectedId, setSelectedId] = useState('')
 
   const [notice, setNotice] = useState('')
   const [isEditorOpen, setIsEditorOpen] = useState(false)
+
+  /*
+   * Cuando los personajes terminan de cargar,
+   * seleccionamos automáticamente el primero.
+   */
+  useEffect(() => {
+    if (
+      characters.length > 0 &&
+      !characters.some(
+        (character) =>
+          character.id === selectedId
+      )
+    ) {
+      setSelectedId(characters[0].id)
+    }
+  }, [characters, selectedId])
 
   const character = characters.find(
     (item) => item.id === selectedId
   )
 
+  /*
+   * Estado de carga
+   */
+  if (isLoading) {
+    return (
+      <section className="empty-state">
+        <h2>
+          Cargando personajes...
+        </h2>
+
+        <p>
+          Estamos recuperando el elenco
+          de BattleDue.
+        </p>
+      </section>
+    )
+  }
+
+  /*
+   * Error
+   */
+  if (error) {
+    return (
+      <section className="empty-state">
+        <h2>
+          No se pudieron cargar los personajes
+        </h2>
+
+        <p>
+          Ocurrió un error al recuperar
+          los datos.
+        </p>
+
+        <pre>
+          {error.message}
+        </pre>
+      </section>
+    )
+  }
+
+  /*
+   * No hay personajes
+   */
   if (!character) {
     return (
       <section className="empty-state">
-        <h2>No hay personajes disponibles</h2>
+        <h2>
+          No hay personajes disponibles
+        </h2>
 
         <p>
-          Crea un personaje antes de diseñar su perfil.
+          Crea un personaje antes de
+          diseñar su perfil.
         </p>
       </section>
     )
@@ -49,22 +114,12 @@ function ProfilesPage() {
     setIsEditorOpen(false)
   }
 
-  /*
-   * Ahora recibimos:
-   *
-   * 1. newProfile
-   * 2. gameData
-   *
-   * gameData contiene los datos que utiliza el Wordle.
-   */
-
   const handleSave = (
     newProfile,
     gameData
   ) => {
     editCharacter(character.id, {
       ...gameData,
-
       profile: newProfile,
     })
 
@@ -96,7 +151,8 @@ function ProfilesPage() {
           </h1>
 
           <p>
-            Personaliza la presentación de cada personaje.
+            Personaliza la presentación
+            de cada personaje.
           </p>
 
         </div>
