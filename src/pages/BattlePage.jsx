@@ -358,6 +358,9 @@ function BattlePage() {
     const [energyPulse, setEnergyPulse] =
     useState({})
 
+  const [ultimateAnimation, setUltimateAnimation] =
+    useState(null)
+
   const characterA = useMemo(
     () =>
       characters.find(
@@ -583,6 +586,7 @@ function BattlePage() {
     setIsBattleFinished(false)
     setIsProcessingTurn(false)
     setSelectedAction('basic')
+    setUltimateAnimation(null)
     setBattleStarted(true)
   }
 
@@ -599,9 +603,10 @@ function BattlePage() {
     setIsProcessingTurn(false)
     setSelectedAction('basic')
     setBattleNotification(null)
+    setUltimateAnimation(null)
   }
 
-  function performAction() {
+  async function performAction() {
     if (
       !battleStarted ||
       isBattleFinished ||
@@ -777,6 +782,23 @@ function BattlePage() {
     }
 
     setIsProcessingTurn(true)
+
+    if (action === 'ultimate') {
+      setUltimateAnimation({
+        id: crypto.randomUUID(),
+        name: currentAttacker.name,
+        ultimateName: actionName,
+        image:
+          currentAttacker.profile?.ultimateImage ||
+          '',
+      })
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1400)
+      })
+
+      setUltimateAnimation(null)
+    }
 
     const result =
       calculateAttack({
@@ -1204,6 +1226,43 @@ function BattlePage() {
         </div>
       ) : (
         <div className="battle-arena">
+          {ultimateAnimation && (
+            <div
+              className="battle-ultimate-overlay"
+              key={ultimateAnimation.id}
+              aria-live="assertive"
+            >
+              <div className="battle-ultimate-backdrop" />
+
+              <div className="battle-ultimate-content">
+                <p className="battle-ultimate-eyebrow">
+                  ⚡ TÉCNICA DEFINITIVA ⚡
+                </p>
+
+                <h2>
+                  {ultimateAnimation.ultimateName}
+                </h2>
+
+                <p className="battle-ultimate-character">
+                  {ultimateAnimation.name}
+                </p>
+
+                {ultimateAnimation.image ? (
+                  <div className="battle-ultimate-image">
+                    <img
+                      src={ultimateAnimation.image}
+                      alt={ultimateAnimation.ultimateName}
+                    />
+                  </div>
+                ) : (
+                  <div className="battle-ultimate-no-image">
+                    ⚡
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {battleNotification && (
             <div
               className={`battle-notification battle-notification-${battleNotification.type}`}
@@ -1255,7 +1314,7 @@ function BattlePage() {
             )}
           </div>
 
-          <div className="battle-fighters">
+          <div className="battle-fighters battle-fighters-ultimate">
             <BattleCharacterCard
               character={
                 characterA
@@ -1446,12 +1505,15 @@ function BattlePage() {
                 )}
 
                 <button
-                  className={
-                    selectedAction ===
-                    'ultimate'
-                      ? 'battle-action battle-action-ultimate active'
-                      : 'battle-action battle-action-ultimate'
-                  }
+                  className={`battle-action battle-action-ultimate ${
+                    selectedAction === 'ultimate'
+                      ? 'active'
+                      : ''
+                  } ${
+                    currentEnergy >= 100
+                      ? 'is-ready'
+                      : ''
+                  }`}
                   type="button"
                   disabled={
                     currentEnergy <

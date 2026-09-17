@@ -4103,6 +4103,30 @@ main {
   align-items: center;
 }
 
+.battle-fighters-ultimate {
+  position: relative;
+}
+
+.battle-ultimate-image {
+  width: min(760px, 88vw);
+  max-height: 65vh;
+}
+
+.battle-ultimate-image img {
+  max-height: 65vh;
+}
+
+@media (max-width: 700px) {
+  .battle-ultimate-image {
+    width: 92vw;
+    max-height: 52vh;
+  }
+
+  .battle-ultimate-image img {
+    max-height: 52vh;
+  }
+}
+
 .battle-fighters > .battle-vs {
   width: 80px;
   height: 80px;
@@ -4897,10 +4921,6 @@ main {
 /* ========================================
    BATTLE NOTIFICATIONS
    ======================================== */
-
-.battle-arena {
-  position: relative;
-}
 
 .battle-notification {
   position: absolute;
@@ -5855,4 +5875,607 @@ main {
       transform: translateX(0);
     }
   }
+}
+
+/* =========================================
+   ENERGÍA - CARGA Y DEFINITIVA
+   ========================================= */
+
+.battle-energy {
+  position: relative;
+  overflow: hidden;
+}
+
+.battle-energy-fill {
+  transition:
+    width 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Destello durante la carga */
+
+.battle-energy.energy-is-charging::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -45%;
+  width: 40%;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.9),
+    transparent
+  );
+
+  animation: energyShine 0.6s ease-out;
+  pointer-events: none;
+}
+
+/* Energía completa */
+
+.battle-energy.energy-is-full {
+  animation:
+    energyReadyPulse 1.3s ease-in-out infinite;
+}
+
+.battle-energy.energy-is-full
+  .battle-energy-fill {
+  filter: brightness(1.35);
+  box-shadow:
+    0 0 8px rgba(255, 215, 70, 0.9),
+    0 0 20px rgba(255, 190, 30, 0.65);
+}
+
+
+/* =========================================
+   BOTÓN DE DEFINITIVA
+   ========================================= */
+
+.battle-action-ultimate {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* Cuando todavía NO está lista */
+
+.battle-action-ultimate:not(.is-ready) {
+  opacity: 0.7;
+}
+
+/* Cuando está lista */
+
+.battle-action-ultimate.is-ready {
+  animation:
+    ultimateButtonPulse 1.5s ease-in-out infinite;
+
+  border-color: rgba(255, 210, 70, 0.9);
+
+  box-shadow:
+    0 0 10px rgba(255, 205, 60, 0.35),
+    0 0 25px rgba(255, 180, 30, 0.18);
+}
+
+.battle-action-ultimate.is-ready::before {
+  content: '';
+
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 80%
+  );
+
+  transform: translateX(-120%);
+
+  animation:
+    ultimateButtonShine 2.4s ease-in-out infinite;
+
+  pointer-events: none;
+}
+
+.battle-action-ultimate.is-ready:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 0 15px rgba(255, 215, 80, 0.55),
+    0 0 35px rgba(255, 180, 30, 0.3);
+}
+
+
+/* =========================================
+   OVERLAY DE TÉCNICA DEFINITIVA
+   ========================================= */
+
+.battle-ultimate-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+
+  width: 100vw;
+  height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 9999;
+
+  overflow: hidden;
+
+  pointer-events: none;
+}
+
+
+/* Fondo oscuro */
+
+.battle-ultimate-backdrop {
+  position: absolute;
+  inset: 0;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(70, 30, 120, 0.35),
+      rgba(0, 0, 0, 0.92) 72%
+    );
+
+  backdrop-filter: blur(3px);
+
+  animation:
+    ultimateBackdrop 1.5s ease-in-out;
+}
+
+
+/* Contenido */
+
+.battle-ultimate-content {
+  position: relative;
+  z-index: 1000;
+transform: translateY(-100px);
+  width: min(850px, 90%);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  text-align: center;
+
+  animation:
+    ultimateContentIn 0.7s
+    cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
+/* Texto superior */
+
+.battle-ultimate-eyebrow {
+  margin: 0 0 8px;
+
+  font-size: 0.85rem;
+  font-weight: 900;
+
+  letter-spacing: 0.2em;
+
+  color: #ffe28a;
+
+  text-shadow:
+    0 0 10px rgba(255, 210, 80, 0.8),
+    0 0 25px rgba(255, 180, 30, 0.45);
+
+  animation:
+    ultimateTextGlow 1s ease-in-out infinite;
+}
+
+
+/* Nombre de técnica */
+
+.battle-ultimate-content h2 {
+  margin: 0;
+
+  font-size: clamp(
+    1.8rem,
+    5vw,
+    3.5rem
+  );
+
+  line-height: 1.05;
+
+  font-weight: 950;
+
+  color: white;
+
+  text-transform: uppercase;
+
+  text-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.8),
+    0 0 25px rgba(255, 210, 90, 0.45);
+
+  animation:
+    ultimateTitleIn 0.8s
+    cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
+/* Nombre del personaje */
+
+.battle-ultimate-character {
+  margin: 10px 0 18px;
+
+  font-size: 1rem;
+  font-weight: 800;
+
+  letter-spacing: 0.12em;
+
+  color: rgba(255, 255, 255, 0.75);
+
+  text-transform: uppercase;
+}
+
+
+/* Imagen */
+
+.battle-ultimate-image {
+  position: relative;
+
+  width: min(650px, 85vw);
+  max-height: 58vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  animation:
+    ultimateImageIn 0.85s
+    cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
+/* Aura detrás de la imagen */
+
+.battle-ultimate-image::before {
+  content: '';
+
+  position: absolute;
+
+  width: 70%;
+  height: 70%;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 210, 80, 0.35),
+      rgba(130, 70, 255, 0.18),
+      transparent 70%
+    );
+
+  filter: blur(25px);
+
+  animation:
+    ultimateAura 1.2s ease-in-out infinite;
+
+  pointer-events: none;
+}
+
+
+/* Imagen */
+
+.battle-ultimate-image img {
+  position: relative;
+  z-index: 2;
+
+  display: block;
+
+  max-width: 100%;
+  max-height: 58vh;
+
+  object-fit: contain;
+
+  border-radius: 16px;
+
+  box-shadow:
+    0 15px 50px rgba(0, 0, 0, 0.75),
+    0 0 35px rgba(255, 210, 90, 0.28);
+
+  animation:
+    ultimateImageFloat 1.2s ease-in-out infinite;
+}
+
+
+/* Si no hay imagen */
+
+.battle-ultimate-no-image {
+  width: 180px;
+  height: 180px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  font-size: 5rem;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 220, 90, 0.25),
+      rgba(90, 50, 150, 0.3),
+      transparent
+    );
+
+  animation:
+    ultimateAura 1.2s ease-in-out infinite;
+}
+
+
+/* =========================================
+   ANIMACIONES
+   ========================================= */
+
+@keyframes energyShine {
+  from {
+    left: -45%;
+  }
+
+  to {
+    left: 120%;
+  }
+}
+
+@keyframes energyReadyPulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.22);
+  }
+}
+
+@keyframes ultimateButtonPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+@keyframes ultimateButtonShine {
+  0%,
+  35% {
+    transform: translateX(-120%);
+  }
+
+  70%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes ultimateOverlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ultimateBackdrop {
+  0% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes ultimateContentIn {
+  from {
+    opacity: 0;
+    transform:
+      scale(0.72)
+      translateY(25px);
+  }
+
+  60% {
+    opacity: 1;
+    transform:
+      scale(1.03)
+      translateY(0);
+  }
+
+  100% {
+    transform:
+      scale(1)
+      translateY(0);
+  }
+}
+
+@keyframes ultimateTextGlow {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 1;
+    text-shadow:
+      0 0 15px rgba(255, 220, 100, 1),
+      0 0 35px rgba(255, 180, 30, 0.7);
+  }
+}
+
+@keyframes ultimateTitleIn {
+  from {
+    opacity: 0;
+    transform:
+      translateY(15px)
+      scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes ultimateImageIn {
+  from {
+    opacity: 0;
+    transform:
+      scale(0.65)
+      rotate(-3deg);
+  }
+
+  55% {
+    opacity: 1;
+    transform:
+      scale(1.04)
+      rotate(1deg);
+  }
+
+  100% {
+    transform:
+      scale(1)
+      rotate(0);
+  }
+}
+
+@keyframes ultimateImageFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes ultimateAura {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+@media (max-width: 700px) {
+  .battle-ultimate-content {
+    width: 94%;
+     transform: translateY(-35px);
+  }
+
+  .battle-ultimate-eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+  }
+
+  .battle-ultimate-content h2 {
+    font-size: 1.65rem;
+  }
+
+  .battle-ultimate-character {
+    font-size: 0.78rem;
+    margin-bottom: 12px;
+  }
+
+  .battle-ultimate-image {
+    width: 90vw;
+    max-height: 48vh;
+  }
+
+  .battle-ultimate-image img {
+    max-height: 48vh;
+    border-radius: 12px;
+  }
+
+  .battle-ultimate-no-image {
+    width: 130px;
+    height: 130px;
+    font-size: 3.5rem;
+  }
+}
+
+
+/* =========================================
+   REDUCIR ANIMACIONES SI EL USUARIO
+   PREFIERE MENOS MOVIMIENTO
+   ========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-energy,
+  .battle-energy-fill,
+  .battle-action-ultimate,
+  .battle-ultimate-overlay,
+  .battle-ultimate-backdrop,
+  .battle-ultimate-content,
+  .battle-ultimate-image,
+  .battle-ultimate-image img {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =========================================
+   DEFINITIVA - FONDO A PANTALLA COMPLETA
+   ========================================= */
+
+.battle-ultimate-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+
+  width: 100vw;
+  height: 100vh;
+
+  z-index: 999;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(70, 30, 120, 0.35),
+      rgba(0, 0, 0, 0.92) 72%
+    );
+
+  backdrop-filter: blur(4px);
 }
