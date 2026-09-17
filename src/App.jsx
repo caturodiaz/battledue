@@ -2,6 +2,7 @@ import { useState } from 'react'
 import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
 import ProfilesPage from './pages/ProfilesPage'
+import BattlePage from './pages/BattlePage'
 import './App.css'
 
 function App() {
@@ -88,6 +89,20 @@ function App() {
 
           <button
             className={
+              page === 'battle'
+                ? 'nav-link active'
+                : 'nav-link'
+            }
+            onClick={() =>
+              navigateTo('battle')
+            }
+            type="button"
+          >
+            ⚔️ Combate
+          </button>
+
+          <button
+            className={
               page === 'profiles'
                 ? 'nav-link active'
                 : 'nav-link'
@@ -122,6 +137,10 @@ function App() {
               navigateTo('profiles')
             }
           />
+        )}
+
+        {page === 'battle' && (
+          <BattlePage />
         )}
 
         {page === 'profiles' && (
