@@ -48,7 +48,7 @@ function normalizeAbilities(abilities = []) {
   }))
 }
 
-function ProfileEditor({ character, onSave }) {
+function ProfileEditor({ character, onSave, onCancel }) {
   const [profile, setProfile] = useState(() => ({
     ...profileDefaults,
     ...character.profile,
@@ -66,6 +66,14 @@ function ProfileEditor({ character, onSave }) {
       ...character.profile?.stats,
     },
   }))
+
+  const [showPrimaryImageInput, setShowPrimaryImageInput] = useState(
+      Boolean(character.profile?.primaryImage)
+    )
+
+    const [showUltimateImageInput, setShowUltimateImageInput] = useState(
+      Boolean(character.profile?.ultimateImage)
+    )
 
   const update = (key, value) => {
     setProfile((previousProfile) => ({
@@ -88,32 +96,27 @@ function ProfileEditor({ character, onSave }) {
     }))
   }
 
-  const updateGalleryImage = (
-    imageId,
-    value
-  ) => {
+  const updateGalleryImage = (imageId, value) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      galleryImages:
-        previousProfile.galleryImages.map(
-          (image) =>
-            image.id === imageId
-              ? {
-                  ...image,
-                  url: value,
-                }
-              : image
-        ),
+      galleryImages: previousProfile.galleryImages.map(
+        (image) =>
+          image.id === imageId
+            ? {
+                ...image,
+                url: value,
+              }
+            : image
+      ),
     }))
   }
 
   const removeGalleryImage = (imageId) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      galleryImages:
-        previousProfile.galleryImages.filter(
-          (image) => image.id !== imageId
-        ),
+      galleryImages: previousProfile.galleryImages.filter(
+        (image) => image.id !== imageId
+      ),
     }))
   }
 
@@ -138,41 +141,52 @@ function ProfileEditor({ character, onSave }) {
   ) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      abilities:
-        previousProfile.abilities.map(
-          (ability) =>
-            ability.id === abilityId
-              ? {
-                  ...ability,
-                  [key]: value,
-                }
-              : ability
-        ),
+      abilities: previousProfile.abilities.map(
+        (ability) =>
+          ability.id === abilityId
+            ? {
+                ...ability,
+                [key]: value,
+              }
+            : ability
+      ),
     }))
   }
 
   const removeAbility = (abilityId) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      abilities:
-        previousProfile.abilities.filter(
-          (ability) =>
-            ability.id !== abilityId
-        ),
+      abilities: previousProfile.abilities.filter(
+        (ability) =>
+          ability.id !== abilityId
+      ),
     }))
   }
 
   /*
-   * TÉCNICA DEFINITIVA
+   * IMAGEN PRINCIPAL
+   *
+   * Se utiliza una URL, igual que en la galería.
+   * La imagen no se muestra dentro del editor.
    */
 
-  const addUltimateImage = () => {
-    update('ultimateImage', '')
-  }
+    const addPrimaryImage = () => {
+      setShowPrimaryImageInput(true)
+    }
 
-  const removeUltimateImage = () => {
-    update('ultimateImage', '')
-  }
+    const removePrimaryImage = () => {
+      update('primaryImage', '')
+      setShowPrimaryImageInput(false)
+    }
+
+    const addUltimateImage = () => {
+      setShowUltimateImageInput(true)
+    }
+
+    const removeUltimateImage = () => {
+      update('ultimateImage', '')
+      setShowUltimateImageInput(false)
+    }
 
   /*
    * GUARDAR
@@ -183,6 +197,9 @@ function ProfileEditor({ character, onSave }) {
 
     const cleanedProfile = {
       ...profile,
+
+      primaryImage:
+        profile.primaryImage?.trim() || '',
 
       galleryImages:
         profile.galleryImages
@@ -218,87 +235,158 @@ function ProfileEditor({ character, onSave }) {
       className="profile-editor"
       onSubmit={handleSubmit}
     >
-      <h2>Editar perfil</h2>
+      <div className="profile-editor-header">
+        <div>
+          <p className="eyebrow">
+            Ficha de combate
+          </p>
 
-      <div className="profile-editor-grid">
+          <h2>
+            Editar perfil
+          </h2>
 
-        <label className="field">
-          Título de combate
+          <p className="profile-editor-character">
+            {character.name}
+          </p>
+        </div>
 
-          <input
-            value={profile.title}
-            onChange={(event) =>
-              update(
-                'title',
-                event.target.value
-              )
-            }
-            placeholder={character.name}
-          />
-        </label>
+        {onCancel && (
+          <button
+            className="profile-editor-close"
+            type="button"
+            onClick={onCancel}
+            aria-label="Cerrar editor"
+          >
+            ×
+          </button>
+        )}
+      </div>
 
-        <label className="field">
-          Frase distintiva
+      {/* INFORMACIÓN PRINCIPAL */}
 
-          <input
-            value={profile.tagline}
-            onChange={(event) =>
-              update(
-                'tagline',
-                event.target.value
-              )
-            }
-            placeholder="El azote..."
-          />
-        </label>
+      <div className="profile-editor-section">
+        <div className="profile-editor-grid">
 
-        <label className="field">
-          Color de acento
+          <label className="field">
+            Título de combate
 
-          <input
-            className="color-input"
-            type="color"
-            value={profile.accent}
-            onChange={(event) =>
-              update(
-                'accent',
-                event.target.value
-              )
-            }
-          />
-        </label>
+            <input
+              value={profile.title}
+              onChange={(event) =>
+                update(
+                  'title',
+                  event.target.value
+                )
+              }
+              placeholder={character.name}
+            />
+          </label>
 
-        <label className="field">
-          Imagen principal (URL)
+          <label className="field">
+            Frase distintiva
 
-          <input
-            type="url"
-            value={profile.primaryImage}
-            onChange={(event) =>
-              update(
-                'primaryImage',
-                event.target.value
-              )
-            }
-            placeholder="Usa la imagen del personaje si queda vacío"
-          />
-        </label>
+            <input
+              value={profile.tagline}
+              onChange={(event) =>
+                update(
+                  'tagline',
+                  event.target.value
+                )
+              }
+              placeholder="El azote..."
+            />
+          </label>
 
-        <label className="field full-width">
-          Biografía
+          <label className="field">
+            Color de acento
 
-          <textarea
-            value={profile.bio}
-            onChange={(event) =>
-              update(
-                'bio',
-                event.target.value
-              )
-            }
-            placeholder="Historia, personalidad o trasfondo..."
-          />
-        </label>
+            <input
+              className="color-input"
+              type="color"
+              value={profile.accent}
+              onChange={(event) =>
+                update(
+                  'accent',
+                  event.target.value
+                )
+              }
+            />
+          </label>
 
+          {/* IMAGEN PRINCIPAL */}
+
+          <div className="image-url-editor">
+
+            <div className="image-url-editor-header">
+              <label className="field-label">
+                Imagen principal
+              </label>
+
+              {!showPrimaryImageInput && (
+                <button
+                  className="button secondary small"
+                  type="button"
+                  onClick={addPrimaryImage}
+                >
+                  + Agregar imagen
+                </button>
+              )}
+            </div>
+
+            {showPrimaryImageInput && (
+              <div className="image-url-editor-item">
+
+                <div className="image-url-editor-item-header">
+                  <span>
+                    URL de imagen
+                  </span>
+
+                  <button
+                    className="remove-image-button"
+                    type="button"
+                    onClick={
+                      removePrimaryImage
+                    }
+                    aria-label="Eliminar imagen principal"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <input
+                  type="url"
+                  value={
+                    profile.primaryImage
+                  }
+                  onChange={(event) =>
+                    update(
+                      'primaryImage',
+                      event.target.value
+                    )
+                  }
+                  placeholder="https://i.ibb.co/..."
+                />
+              </div>
+            )}
+
+          </div>
+
+          <label className="field full-width">
+            Biografía
+
+            <textarea
+              value={profile.bio}
+              onChange={(event) =>
+                update(
+                  'bio',
+                  event.target.value
+                )
+              }
+              placeholder="Historia, personalidad o trasfondo..."
+            />
+          </label>
+
+        </div>
       </div>
 
       {/* GALERÍA */}
@@ -527,7 +615,9 @@ function ProfileEditor({ character, onSave }) {
           ([key, label]) => (
             <label key={key}>
 
-              {label}
+              <span>
+                {label}
+              </span>
 
               <input
                 type="range"
@@ -591,15 +681,17 @@ function ProfileEditor({ character, onSave }) {
 
           </label>
 
-          <div className="ultimate-image-editor">
+          {/* IMAGEN DE TÉCNICA */}
 
-            <div className="ultimate-image-header">
+          <div className="image-url-editor">
 
-              <span>
+            <div className="image-url-editor-header">
+
+              <label className="field-label">
                 Imagen de técnica
-              </span>
+              </label>
 
-              {!profile.ultimateImage && (
+              {!showUltimateImageInput && (
                 <button
                   className="button secondary small"
                   type="button"
@@ -613,17 +705,17 @@ function ProfileEditor({ character, onSave }) {
 
             </div>
 
-            {profile.ultimateImage && (
-              <div className="ultimate-image-item">
+            {showUltimateImageInput && (
+              <div className="image-url-editor-item">
 
-                <div className="ultimate-image-item-header">
+                <div className="image-url-editor-item-header">
 
                   <span>
-                    Imagen
+                    URL de imagen
                   </span>
 
                   <button
-                    className="remove-ultimate-image"
+                    className="remove-image-button"
                     type="button"
                     onClick={
                       removeUltimateImage
@@ -677,12 +769,28 @@ function ProfileEditor({ character, onSave }) {
 
       </section>
 
-      <button
-        className="button"
-        type="submit"
-      >
-        Guardar perfil
-      </button>
+      {/* ACCIONES */}
+
+      <div className="profile-editor-actions">
+
+        {onCancel && (
+          <button
+            className="button secondary"
+            type="button"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+        )}
+
+        <button
+          className="button"
+          type="submit"
+        >
+          Guardar perfil
+        </button>
+
+      </div>
 
     </form>
   )
