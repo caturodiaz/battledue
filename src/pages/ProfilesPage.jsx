@@ -39,9 +39,11 @@ function ProfilesPage() {
   const [isCreating, setIsCreating] = useState(false)
 
   /*
-   * Seleccionar automáticamente
-   * el primer personaje disponible.
+   * ========================================
+   * SELECCIÓN AUTOMÁTICA
+   * ========================================
    */
+
   useEffect(() => {
     if (
       characters.length > 0 &&
@@ -50,7 +52,9 @@ function ProfilesPage() {
           character.id === selectedId
       )
     ) {
-      setSelectedId(characters[0].id)
+      setSelectedId(
+        characters[0].id
+      )
     }
   }, [characters, selectedId])
 
@@ -117,11 +121,6 @@ function ProfilesPage() {
             newCharacter
           )
 
-        /*
-         * Si useCharacters devuelve
-         * el personaje creado,
-         * lo seleccionamos.
-         */
         if (createdCharacter?.id) {
           setSelectedId(
             createdCharacter.id
@@ -149,7 +148,6 @@ function ProfilesPage() {
           character.id,
           {
             ...gameData,
-
             profile: newProfile,
           }
         )
@@ -242,9 +240,7 @@ function ProfilesPage() {
    * ========================================
    */
 
-  if (
-    characters.length === 0
-  ) {
+  if (characters.length === 0) {
     return (
       <section className="profiles-page">
 
@@ -268,9 +264,7 @@ function ProfilesPage() {
           <button
             className="button"
             type="button"
-            onClick={
-              openCreateModal
-            }
+            onClick={openCreateModal}
           >
             + Nuevo personaje
           </button>
@@ -291,9 +285,7 @@ function ProfilesPage() {
           <button
             className="button"
             type="button"
-            onClick={
-              openCreateModal
-            }
+            onClick={openCreateModal}
           >
             Crear personaje
           </button>
@@ -473,140 +465,20 @@ function ProfilesPage() {
 
             </div>
 
-            {/* ========================================
-                INFORMACIÓN BÁSICA
-                ======================================== */}
-
-            <section className="character-basic-info">
-
-              <div className="character-basic-image">
-
-                {profile.primaryImage ||
-                character.image ? (
-                  <img
-                    src={
-                      profile.primaryImage ||
-                      character.image
-                    }
-                    alt={
-                      character.name
-                    }
-                  />
-                ) : (
-                  <div className="character-basic-image-placeholder">
-                    Sin imagen
-                  </div>
-                )}
-
-              </div>
-
-              <div className="character-basic-details">
-
-                <div>
-
-                  <p className="eyebrow">
-                    Nombre
-                  </p>
-
-                  <h2>
-                    {character.name}
-                  </h2>
-
-                </div>
-
-                {profile.tagline && (
-                  <p className="character-tagline">
-                    {profile.tagline}
-                  </p>
-                )}
-
-                <div className="character-facts">
-
-                  {character.age !==
-                    '' &&
-                    character.age !==
-                      null &&
-                    character.age !==
-                      undefined && (
-                      <span>
-                        <b>
-                          Edad
-                        </b>
-
-                        {character.age}{' '}
-                        años
-                      </span>
-                    )}
-
-                  {character.gender && (
-                    <span>
-                      <b>
-                        Género
-                      </b>
-
-                      {
-                        character.gender
-                      }
-                    </span>
-                  )}
-
-                  {character.species && (
-                    <span>
-                      <b>
-                        Especie
-                      </b>
-
-                      {
-                        character.species
-                      }
-                    </span>
-                  )}
-
-                  {character.alignment && (
-                    <span>
-                      <b>
-                        Afiliación
-                      </b>
-
-                      {
-                        character.alignment
-                      }
-                    </span>
-                  )}
-
-                  {character.power && (
-                    <span>
-                      <b>
-                        Poder
-                      </b>
-
-                      {
-                        character.power
-                      }
-                    </span>
-                  )}
-
-                  {character.weapon && (
-                    <span>
-                      <b>
-                        Arma
-                      </b>
-
-                      {
-                        character.weapon
-                      }
-                    </span>
-                  )}
-
-                </div>
-
-              </div>
-
-            </section>
-
-            {/* ========================================
-                PERFIL COMPLETO
-                ======================================== */}
+            {/*
+             * ========================================
+             * FICHA COMPLETA
+             *
+             * CharacterProfile contiene:
+             * - Imagen principal
+             * - Información básica
+             * - Galería
+             * - Habilidades
+             * - Atributos
+             * - Biografía
+             * - Técnica definitiva
+             * ========================================
+             */}
 
             <CharacterProfile
               character={

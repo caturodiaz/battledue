@@ -32,6 +32,60 @@ function CharacterProfile({
         .slice(0, 3)
     : []
 
+  /*
+   * ========================================
+   * INFORMACIÓN BÁSICA
+   * ========================================
+   *
+   * Estos datos pertenecen al personaje,
+   * no al perfil visual.
+   *
+   * Se muestran debajo de la imagen principal.
+   */
+
+  const basicInfo = [
+    {
+      label: 'Edad',
+      value:
+        character.age !== '' &&
+        character.age !== null &&
+        character.age !== undefined
+          ? `${character.age} años`
+          : 'Desconocida',
+    },
+    {
+      label: 'Género',
+      value:
+        character.gender ||
+        'Desconocido',
+    },
+    {
+      label: 'Especie',
+      value:
+        character.species ||
+        'Desconocida',
+    },
+    {
+      label: 'Afiliación',
+      value:
+        character.affiliation ||
+        character.alignment ||
+        'Desconocida',
+    },
+    {
+      label: 'Poder',
+      value:
+        character.power ||
+        'Desconocido',
+    },
+    {
+      label: 'Arma',
+      value:
+        character.weapon ||
+        'Ninguna',
+    },
+  ]
+
   return (
     <>
       <article
@@ -41,9 +95,15 @@ function CharacterProfile({
             profile.accent,
         }}
       >
+
+        {/* ========================================
+            CABECERA
+            ======================================== */}
+
         <header className="profile-title">
 
           <div>
+
             <span>
               BattleDue
             </span>
@@ -57,6 +117,7 @@ function CharacterProfile({
               {profile.tagline ||
                 'Perfil de personaje'}
             </p>
+
           </div>
 
           <div className="profile-badge">
@@ -64,6 +125,11 @@ function CharacterProfile({
           </div>
 
         </header>
+
+
+        {/* ========================================
+            IMAGEN PRINCIPAL
+            ======================================== */}
 
         <section className="profile-main-image">
 
@@ -79,6 +145,47 @@ function CharacterProfile({
           )}
 
         </section>
+
+
+        {/* ========================================
+            INFORMACIÓN DEL PERSONAJE
+            ======================================== */}
+
+        <section className="profile-basic-info">
+
+          <div className="profile-basic-info-title">
+
+            <h3>
+              Información
+            </h3>
+
+          </div>
+
+          {basicInfo.map(
+            (item) => (
+              <div
+                className="profile-basic-info-item"
+                key={item.label}
+              >
+
+                <span>
+                  {item.label}
+                </span>
+
+                <strong>
+                  {item.value}
+                </strong>
+
+              </div>
+            )
+          )}
+
+        </section>
+
+
+        {/* ========================================
+            GALERÍA
+            ======================================== */}
 
         <section className="profile-views">
 
@@ -104,25 +211,33 @@ function CharacterProfile({
                       )
                     }
                   >
+
                     <img
                       src={image.url}
                       alt={`${character.name} vista ${
                         index + 1
                       }`}
                     />
+
                   </button>
                 )
               )
             ) : (
               <p>
-                Agrega hasta tres imágenes
-                de vistas.
+                Agrega imágenes de
+                vistas para este
+                personaje.
               </p>
             )}
 
           </div>
 
         </section>
+
+
+        {/* ========================================
+            HABILIDADES
+            ======================================== */}
 
         <section className="profile-abilities">
 
@@ -146,6 +261,7 @@ function CharacterProfile({
                   </span>
 
                   <div>
+
                     <h4>
                       {ability.name}
                     </h4>
@@ -155,6 +271,7 @@ function CharacterProfile({
                         ability.description
                       }
                     </p>
+
                   </div>
 
                 </div>
@@ -169,6 +286,11 @@ function CharacterProfile({
 
         </section>
 
+
+        {/* ========================================
+            ATRIBUTOS
+            ======================================== */}
+
         <section className="profile-stats">
 
           <h3>
@@ -177,39 +299,46 @@ function CharacterProfile({
 
           {Object.entries(
             statLabels
-          ).map(([key, label]) => (
-            <div
-              className="stat"
-              key={key}
-            >
+          ).map(
+            ([key, label]) => (
+              <div
+                className="stat"
+                key={key}
+              >
 
-              <span>
-                {label}
-              </span>
+                <span>
+                  {label}
+                </span>
 
-              <div className="stat-bars">
+                <div className="stat-bars">
 
-                {Array.from(
-                  { length: 6 },
-                  (_, index) => (
-                    <i
-                      className={
-                        index <
-                        profile.stats[key]
-                          ? 'filled'
-                          : ''
-                      }
-                      key={index}
-                    />
-                  )
-                )}
+                  {Array.from(
+                    { length: 6 },
+                    (_, index) => (
+                      <i
+                        className={
+                          index <
+                          profile.stats[key]
+                            ? 'filled'
+                            : ''
+                        }
+                        key={index}
+                      />
+                    )
+                  )}
+
+                </div>
 
               </div>
-
-            </div>
-          ))}
+            )
+          )}
 
         </section>
+
+
+        {/* ========================================
+            BIOGRAFÍA
+            ======================================== */}
 
         <section className="profile-bio">
 
@@ -224,38 +353,61 @@ function CharacterProfile({
 
         </section>
 
-        <section className="profile-ultimate">
 
-          {profile.ultimateImage && (
-            <img
-              src={
-                profile.ultimateImage
-              }
-              alt=""
-            />
-          )}
+        {/* ========================================
+            TÉCNICA DEFINITIVA
+            ======================================== */}
 
-          <div>
+<section className="profile-ultimate">
 
-            <h3>
-              Técnica definitiva
-            </h3>
+  <div className="profile-ultimate-content">
 
-            <h4>
-              {profile.ultimateName ||
-                'Sin técnica definida'}
-            </h4>
+    <h3>
+      Técnica definitiva
+    </h3>
 
-            <p>
-              {profile.ultimateDescription ||
-                'Agrega el nombre, descripción e imagen de la técnica definitiva.'}
-            </p>
+    <h4>
+      {profile.ultimateName ||
+        'Sin técnica definida'}
+    </h4>
 
-          </div>
+    <p>
+      {profile.ultimateDescription ||
+        'Agrega el nombre, descripción e imagen de la técnica definitiva.'}
+    </p>
 
-        </section>
+  </div>
+
+  {profile.ultimateImage && (
+    <button
+      className="profile-ultimate-image-button"
+      type="button"
+      onClick={() =>
+        setSelectedGalleryImage({
+          id: 'ultimate',
+          url: profile.ultimateImage,
+        })
+      }
+      aria-label="Ver técnica definitiva en grande"
+    >
+      <img
+        src={profile.ultimateImage}
+        alt={
+          profile.ultimateName ||
+          'Técnica definitiva'
+        }
+      />
+    </button>
+  )}
+
+</section>
 
       </article>
+
+
+      {/* ========================================
+          LIGHTBOX DE GALERÍA
+          ======================================== */}
 
       {selectedGalleryImage && (
         <div
@@ -298,6 +450,7 @@ function CharacterProfile({
 
         </div>
       )}
+
     </>
   )
 }

@@ -65,6 +65,7 @@ main {
   max-width: 1160px;
   margin: 0 auto;
   padding: 50px 28px 80px;
+  
 }
 
 /* ========================================
@@ -77,6 +78,7 @@ main {
   align-content: center;
   max-width: 770px;
   position: relative;
+  margin: 0 auto
 }
 
 .hero::before {
@@ -2888,4 +2890,753 @@ main {
     grid-template-columns: 82px minmax(0, 1fr) 35px;
     font-size: .62rem;
   }
+}
+
+/* ========================================
+   BATTLEDUE - AJUSTES FINALES DE PERFIL
+   ======================================== */
+
+/*
+ * La ficha ahora tiene esta estructura:
+ *
+ * ┌─────────────────────────────────────┐
+ * │              TÍTULO                 │
+ * ├──────────────────┬──────────────────┤
+ * │                  │                  │
+ * │ IMAGEN PRINCIPAL │ VISTAS           │
+ * │                  │                  │
+ * ├──────────────────┴──────────────────┤
+ * │ INFORMACIÓN DEL PERSONAJE            │
+ * ├──────────────────┬──────────────────┤
+ * │ HABILIDADES      │ ATRIBUTOS        │
+ * ├──────────────────┼──────────────────┤
+ * │ PERFIL           │ TÉCNICA           │
+ * └──────────────────┴──────────────────┘
+ */
+
+
+/* ========================================
+   FICHA PRINCIPAL
+   ======================================== */
+
+.profile-card {
+  grid-template-columns:
+    minmax(0, 1.05fr)
+    minmax(0, 1.35fr);
+
+  grid-template-areas:
+    "title title"
+    "image views"
+    "basic abilities"
+    "bio stats"
+    "bio ultimate";
+
+  gap: 10px;
+}
+
+
+/* ========================================
+   IMAGEN PRINCIPAL
+   ======================================== */
+
+.profile-main-image {
+  min-height: 520px;
+  max-height: 680px;
+  overflow: hidden;
+}
+
+.profile-main-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  object-fit: cover;
+}
+
+
+/* ========================================
+   INFORMACIÓN BÁSICA
+   ======================================== */
+
+.profile-basic-info {
+  grid-area: basic;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 0;
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  border: 1px solid #3d3b43;
+
+  background: rgba(8, 8, 11, .9);
+}
+
+
+.profile-basic-info-title {
+  grid-column: 1 / -1;
+
+  padding: 10px 12px;
+
+  border-bottom: 1px solid #3d3b43;
+
+  background: rgba(255, 255, 255, .025);
+}
+
+
+.profile-basic-info-title h3 {
+  display: inline-block;
+
+  margin: 0;
+
+  padding: 5px 11px;
+
+  color: #fff;
+
+  background: var(--profile-accent);
+
+  font-size: .65rem;
+  font-weight: 900;
+
+  line-height: 1;
+
+  text-transform: uppercase;
+  letter-spacing: .08em;
+
+  transform: skewX(-12deg);
+}
+
+
+.profile-basic-info-item {
+  min-width: 0;
+
+  padding: 10px 12px;
+
+  border-right: 1px solid #37343c;
+  border-bottom: 1px solid #37343c;
+}
+
+
+.profile-basic-info-item:nth-child(even) {
+  border-right: 0;
+}
+
+
+.profile-basic-info-item span {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: var(--profile-accent);
+
+  font-size: .58rem;
+  font-weight: 900;
+
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+
+.profile-basic-info-item strong {
+  display: block;
+
+  color: #fff;
+
+  font-size: .72rem;
+  font-weight: 800;
+
+  line-height: 1.25;
+
+  text-transform: uppercase;
+
+  overflow-wrap: anywhere;
+}
+
+/* ========================================
+   ENCABEZADO DE INFORMACIÓN
+   ======================================== */
+
+.profile-basic-info-title {
+  grid-column: 1 / -1;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 11px 13px;
+
+  border-bottom: 1px solid #3d3b43;
+  background: rgba(255, 255, 255, .025);
+}
+
+
+.profile-basic-info-title h3 {
+  margin: 0;
+
+  padding: 5px 11px;
+
+  color: #fff;
+  background: var(--profile-accent);
+
+  font-size: .68rem;
+  font-weight: 900;
+
+  text-transform: uppercase;
+  letter-spacing: .08em;
+
+  transform: skewX(-12deg);
+}
+
+
+/* ========================================
+   GALERÍA
+   ======================================== */
+
+.profile-views {
+  min-width: 0;
+}
+
+.profile-views > div {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 8px;
+}
+
+.profile-view-button {
+  aspect-ratio: 16 / 10;
+  height: auto;
+
+  min-height: 95px;
+}
+
+.profile-view-button img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+
+/* ========================================
+   HABILIDADES
+   ======================================== */
+
+.profile-abilities {
+  min-width: 0;
+}
+
+.profile-abilities .ability {
+  padding: 10px 0;
+}
+
+.profile-abilities .ability:first-of-type {
+  border-top: 0;
+}
+
+.profile-abilities .ability-mark {
+  flex: 0 0 auto;
+}
+
+
+/* ========================================
+   ATRIBUTOS
+   ======================================== */
+
+.profile-stats {
+  min-width: 0;
+}
+
+.profile-stats .stat {
+  min-height: 30px;
+}
+
+
+/* ========================================
+   BIOGRAFÍA
+   ======================================== */
+
+.profile-bio {
+  min-width: 0;
+}
+
+.profile-bio p {
+  line-height: 1.55;
+}
+
+
+/* ========================================
+   TÉCNICA DEFINITIVA
+   ======================================== */
+
+.profile-ultimate {
+  min-width: 0;
+}
+
+
+/* ========================================
+   MODAL DEL EDITOR
+   ======================================== */
+
+.profile-modal-backdrop {
+  padding: 24px;
+  backdrop-filter: blur(3px);
+}
+
+.profile-modal {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 48px);
+
+  box-shadow:
+    10px 10px 0 #111;
+}
+
+.profile-modal-scroll {
+  max-height: calc(100vh - 54px);
+
+  overscroll-behavior: contain;
+}
+
+
+/* ========================================
+   EDITOR DENTRO DEL MODAL
+   ======================================== */
+
+.profile-editor {
+  padding: 30px;
+}
+
+.profile-editor-section {
+  margin-top: 28px;
+  padding-top: 22px;
+
+  border-top: 3px solid #111;
+}
+
+.profile-editor-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.profile-editor-section-header {
+  margin-bottom: 18px;
+}
+
+.profile-editor-section-header .eyebrow {
+  margin-bottom: 4px;
+}
+
+.profile-editor-section-header h3 {
+  margin: 0;
+
+  font-size: 1.1rem;
+
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+
+/* ========================================
+   INPUT DE IMAGEN PRINCIPAL
+   ======================================== */
+
+.image-url-editor {
+  display: grid;
+  gap: 9px;
+}
+
+.image-url-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+}
+
+.field-label {
+  color: #252422;
+
+  font-size: .78rem;
+  font-weight: 900;
+
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+.image-url-editor-item {
+  padding: 10px;
+
+  border: 2px solid #111;
+
+  background: #eeece5;
+
+  box-shadow: 3px 3px 0 #111;
+}
+
+.image-url-editor-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 9px;
+  padding-bottom: 7px;
+
+  border-bottom: 1px solid #aaa69d;
+}
+
+.image-url-editor-item-header span {
+  color: #a20707;
+
+  font-size: .62rem;
+  font-weight: 950;
+
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.image-url-editor-item input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 10px 11px;
+
+  border: 2px solid #111;
+
+  background: #fff;
+  color: #111;
+
+  outline: none;
+
+  font-size: .7rem;
+}
+
+.image-url-editor-item input:focus {
+  border-color: #a20707;
+
+  box-shadow:
+    3px 3px 0 #a20707;
+}
+
+.remove-image-button {
+  display: grid;
+  place-items: center;
+
+  width: 27px;
+  height: 27px;
+
+  padding: 0;
+
+  border: 2px solid #111;
+
+  background: #fff;
+  color: #111;
+
+  font-size: 1rem;
+  font-weight: 900;
+
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.remove-image-button:hover {
+  background: #a20707;
+  color: #fff;
+}
+
+
+/* ========================================
+   EDAD + "AÑOS"
+   ======================================== */
+
+.field-with-suffix {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.field-with-suffix input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-with-suffix span {
+  flex: 0 0 auto;
+
+  color: #625e58;
+
+  font-size: .75rem;
+  font-weight: 900;
+
+  text-transform: uppercase;
+}
+
+
+/* ========================================
+   MOBILE
+   ======================================== */
+
+@media (max-width: 900px) {
+
+  .profile-card {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+
+    grid-template-areas:
+      "title title"
+      "image image"
+      "basic basic"
+      "views views"
+      "abilities abilities"
+      "stats stats"
+      "bio bio"
+      "ultimate ultimate";
+  }
+
+  .profile-main-image {
+    min-height: 430px;
+    max-height: 600px;
+  }
+
+  .profile-main-image img {
+    min-height: 430px;
+  }
+
+  .profile-basic-info {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+
+@media (max-width: 600px) {
+
+  .profile-card {
+    grid-template-columns: 1fr;
+
+    grid-template-areas:
+      "title"
+      "image"
+      "basic"
+      "views"
+      "abilities"
+      "stats"
+      "bio"
+      "ultimate";
+  }
+
+  .profile-main-image {
+    min-height: 340px;
+    max-height: 500px;
+  }
+
+  .profile-main-image img {
+    min-height: 340px;
+  }
+
+  .profile-basic-info {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-basic-info-title {
+    grid-column: 1 / -1;
+  }
+
+  .profile-basic-info-item {
+    padding: 11px 10px;
+  }
+
+  .profile-basic-info-item:nth-child(odd) {
+    border-right: 1px solid #37343c;
+  }
+
+  .profile-basic-info-item strong {
+    font-size: .7rem;
+  }
+
+  .profile-views > div {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-view-button {
+    min-height: 90px;
+  }
+
+  .profile-modal-backdrop {
+    align-items: flex-start;
+
+    padding: 10px;
+  }
+
+  .profile-modal {
+    max-height: calc(100vh - 20px);
+
+    box-shadow: 5px 5px 0 #111;
+  }
+
+  .profile-modal-scroll {
+    max-height: calc(100vh - 26px);
+  }
+
+  .profile-editor {
+    padding: 20px 16px;
+  }
+
+  .profile-editor-header {
+    margin-bottom: 22px;
+  }
+
+  .profile-editor-section {
+    margin-top: 24px;
+    padding-top: 18px;
+  }
+
+  .image-url-editor-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+}
+
+/* ========================================
+   TÉCNICA DEFINITIVA
+   ======================================== */
+
+.profile-ultimate {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(220px, .9fr);
+
+  gap: 18px;
+
+  align-items: stretch;
+
+  min-width: 0;
+}
+
+
+.profile-ultimate-content {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+
+.profile-ultimate-image-button {
+  display: block;
+
+  width: 100%;
+  min-width: 0;
+
+  padding: 0;
+
+  border: 0;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  overflow: hidden;
+
+  position: relative;
+}
+
+
+.profile-ultimate-image-button::after {
+  content: 'VER EN GRANDE';
+
+  position: absolute;
+
+  right: 8px;
+  bottom: 8px;
+
+  padding: 5px 7px;
+
+  background: rgba(0, 0, 0, .82);
+  color: #fff;
+
+  font-size: .55rem;
+  font-weight: 900;
+
+  letter-spacing: .06em;
+
+  opacity: 0;
+
+  transition: opacity .15s ease;
+}
+
+
+.profile-ultimate-image-button:hover::after {
+  opacity: 1;
+}
+
+
+.profile-ultimate-image-button img {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  min-height: 230px;
+
+  object-fit: cover;
+
+  border: 1px solid #3d3b43;
+
+  transition:
+    transform .2s ease,
+    filter .2s ease;
+}
+
+
+.profile-ultimate-image-button:hover img {
+  transform: scale(1.025);
+
+  filter: brightness(1.08);
+}
+
+@media (max-width: 600px) {
+
+  .profile-ultimate {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 14px;
+  }
+
+  .profile-ultimate-content {
+    order: 1;
+  }
+
+  .profile-ultimate-image-button {
+    order: 2;
+  }
+
+  .profile-ultimate-image-button img {
+    width: 100%;
+
+    min-height: 0;
+
+    aspect-ratio: 16 / 10;
+
+    object-fit: cover;
+  }
+
 }
