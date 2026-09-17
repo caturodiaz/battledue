@@ -12,61 +12,46 @@ function getCharacterImage(character) {
   )
 }
 
-function getCharacterStats(character) {
+function getStats(character) {
+  const stats = character?.profile?.stats || {}
+
   return {
-    strength: Number(
-      character?.profile?.stats?.strength ??
-      character?.stats?.strength ??
-      0
-    ),
-
-    speed: Number(
-      character?.profile?.stats?.speed ??
-      character?.stats?.speed ??
-      0
-    ),
-
-    resistance: Number(
-      character?.profile?.stats?.resistance ??
-      character?.stats?.resistance ??
-      0
-    ),
-
-    technique: Number(
-      character?.profile?.stats?.technique ??
-      character?.stats?.technique ??
-      0
-    ),
-
-    power: Number(
-      character?.profile?.stats?.power ??
-      character?.stats?.power ??
-      0
-    ),
+    strength: Number(stats.strength) || 0,
+    speed: Number(stats.speed) || 0,
+    defense: Number(stats.defense) || 0,
+    range: Number(stats.range) || 0,
+    endurance: Number(stats.endurance) || 0,
+    control: Number(stats.control) || 0,
   }
 }
 
+function getAbilities(character) {
+  return Array.isArray(
+    character?.profile?.abilities
+  )
+    ? character.profile.abilities
+    : []
+}
+
 function getMaxHp(character) {
-  const stats = getCharacterStats(character)
+  const stats = getStats(character)
 
   return (
     BASE_HP +
-    stats.resistance * 8
+    stats.endurance * 10 +
+    stats.defense * 5
   )
 }
 
 function getTurnOrder(characterA, characterB) {
-  const statsA =
-    getCharacterStats(characterA)
+  const speedA = getStats(characterA).speed
+  const speedB = getStats(characterB).speed
 
-  const statsB =
-    getCharacterStats(characterB)
-
-  if (statsA.speed > statsB.speed) {
+  if (speedA > speedB) {
     return [characterA, characterB]
   }
 
-  if (statsB.speed > statsA.speed) {
+  if (speedB > speedA) {
     return [characterB, characterA]
   }
 
@@ -75,105 +60,77 @@ function getTurnOrder(characterA, characterB) {
     : [characterB, characterA]
 }
 
-function getAttackResult(attacker, defender) {
-  const attackerStats =
-    getCharacterStats(attacker)
-
-  const defenderStats =
-    getCharacterStats(defender)
-
-  /*
-   * PRECISIÓN
-   *
-   * La técnica ayuda a acertar.
-   * La velocidad del defensor ayuda a esquivar.
-   *
-   * El mínimo evita que un personaje
-   * pueda llegar a tener 0% de precisión.
-   */
+function calculateAttack({
+  attacker,
+  defender,
+  multiplier = 1,
+  guaranteedHit = false,
+  criticalBonus = 0,
+}) {
+  const attackerStats = getStats(attacker)
+  const defenderStats = getStats(defender)
 
   const accuracy = Math.max(
-    55,
+    50,
     Math.min(
-      95,
-      75 +
-        attackerStats.technique * 3 -
+      97,
+      72 +
+        attackerStats.control * 3 +
+        attackerStats.range -
         defenderStats.speed * 2
     )
   )
 
-  const roll = Math.random() * 100
+  const hit =
+    guaranteedHit ||
+    Math.random() * 100 <= accuracy
 
-  if (roll > accuracy) {
+  if (!hit) {
     return {
       type: 'miss',
       damage: 0,
       accuracy,
+      critical: false,
     }
   }
 
-  /*
-   * DAÑO BASE
-   *
-   * La fuerza representa el daño físico.
-   * El poder agrega daño adicional.
-   */
-
   const baseDamage =
-    7 +
+    6 +
     attackerStats.strength * 2 +
-    attackerStats.power
-
-  /*
-   * VARIACIÓN
-   *
-   * El mismo ataque no hace siempre
-   * exactamente el mismo daño.
-   */
+    attackerStats.range * 0.8 +
+    attackerStats.control * 0.5
 
   const variation =
     0.8 +
     Math.random() * 0.4
 
   let damage =
-    baseDamage * variation
-
-  /*
-   * CRÍTICO
-   *
-   * La técnica aumenta ligeramente
-   * la posibilidad de crítico.
-   */
+    baseDamage *
+    variation *
+    multiplier
 
   const criticalChance = Math.min(
-    35,
+    40,
     8 +
-      attackerStats.technique * 2
+      attackerStats.control * 2 +
+      criticalBonus
   )
 
-  const criticalRoll =
-    Math.random() * 100
-
   const critical =
-    criticalRoll < criticalChance
+    Math.random() * 100 <
+    criticalChance
 
   if (critical) {
-    damage *= 1.75
+    damage *= 1.7
   }
 
-  /*
-   * RESISTENCIA
-   *
-   * La resistencia reduce el daño.
-   */
-
-  const resistanceReduction = Math.min(
-    0.45,
-    defenderStats.resistance * 0.035
+  const defenseReduction = Math.min(
+    0.5,
+    defenderStats.defense * 0.04
   )
 
   damage *=
-    1 - resistanceReduction
+    1 - defenseReduction
 
   damage = Math.max(
     1,
@@ -279,19 +236,24 @@ function BattleCharacterCard({
         </div>
       </div>
 
-      <div className="battle-character-image">
+        <div className="battle-character-image">
+        {isActive && (
+            <div className="battle-turn-badge">
+            ⚔️ ¡TU TURNO!
+            </div>
+        )}
+
         {image ? (
-          <img
+            <img
             src={image}
             alt={character.name}
-          />
+            />
         ) : (
-          <div className="battle-character-placeholder">
-            {character.name?.[0] ||
-              '?'}
-          </div>
+            <div className="battle-character-placeholder">
+            {character.name?.[0] || '?'}
+            </div>
         )}
-      </div>
+        </div>
     </article>
   )
 }
@@ -333,6 +295,9 @@ function BattlePage() {
   const [isProcessingTurn, setIsProcessingTurn] =
     useState(false)
 
+  const [selectedAction, setSelectedAction] =
+    useState('basic')
+
   const characterA = useMemo(
     () =>
       characters.find(
@@ -359,6 +324,64 @@ function BattlePage() {
     ]
   )
 
+  const currentAttacker = useMemo(
+    () => {
+      if (
+        !currentAttackerId
+      ) {
+        return null
+      }
+
+      return (
+        characters.find(
+          (character) =>
+            character.id ===
+            currentAttackerId
+        ) || null
+      )
+    },
+    [
+      characters,
+      currentAttackerId,
+    ]
+  )
+
+  const currentDefender = useMemo(
+    () => {
+      if (
+        !currentAttackerId
+      ) {
+        return null
+      }
+
+      if (
+        currentAttackerId ===
+        characterA?.id
+      ) {
+        return characterB
+      }
+
+      return characterA
+    },
+    [
+      currentAttackerId,
+      characterA,
+      characterB,
+    ]
+  )
+
+  const currentEnergy =
+    currentAttacker
+      ? energy[
+          currentAttacker.id
+        ] || 0
+      : 0
+
+  const currentAbilities =
+    getAbilities(
+      currentAttacker
+    )
+
   useEffect(() => {
     if (
       characters.length >= 2 &&
@@ -379,11 +402,43 @@ function BattlePage() {
     characterBId,
   ])
 
+  useEffect(() => {
+    if (
+      !currentAttacker ||
+      !battleStarted
+    ) {
+      return
+    }
+
+    setSelectedAction('basic')
+  }, [
+    currentAttackerId,
+    battleStarted,
+    currentAttacker,
+  ])
+
+  function addLog(
+    text,
+    type = 'attack'
+  ) {
+    setBattleLog(
+      (previousLog) => [
+        ...previousLog,
+        {
+          id: crypto.randomUUID(),
+          type,
+          text,
+        },
+      ]
+    )
+  }
+
   function startBattle() {
     if (
       !characterA ||
       !characterB ||
-      characterA.id === characterB.id
+      characterA.id ===
+        characterB.id
     ) {
       return
     }
@@ -394,15 +449,18 @@ function BattlePage() {
     const maxHpB =
       getMaxHp(characterB)
 
-    const [firstAttacker] =
-      getTurnOrder(
-        characterA,
-        characterB
-      )
+    const [
+      firstAttacker,
+    ] = getTurnOrder(
+      characterA,
+      characterB
+    )
 
     setHp({
-      [characterA.id]: maxHpA,
-      [characterB.id]: maxHpB,
+      [characterA.id]:
+        maxHpA,
+      [characterB.id]:
+        maxHpB,
     })
 
     setEnergy({
@@ -420,13 +478,14 @@ function BattlePage() {
       {
         id: crypto.randomUUID(),
         type: 'system',
-        text: `¡Comienza el combate! ${firstAttacker.name} tiene la iniciativa.`,
+        text: `⚔️ ¡Comienza el combate! ${firstAttacker.name} tiene la iniciativa.`,
       },
     ])
 
     setWinnerId('')
     setIsBattleFinished(false)
     setIsProcessingTurn(false)
+    setSelectedAction('basic')
     setBattleStarted(true)
   }
 
@@ -440,143 +499,222 @@ function BattlePage() {
     setWinnerId('')
     setIsBattleFinished(false)
     setIsProcessingTurn(false)
+    setSelectedAction('basic')
   }
 
-  function performTurn() {
+  function performAction() {
     if (
       !battleStarted ||
       isBattleFinished ||
       isProcessingTurn ||
-      !characterA ||
-      !characterB ||
-      !currentAttackerId
+      !currentAttacker ||
+      !currentDefender
     ) {
       return
     }
 
+    const action =
+      selectedAction
+
+    let actionName =
+      'Ataque básico'
+
+    let multiplier = 1
+
+    let energyCost = 0
+
+    let guaranteedHit = false
+
+    let criticalBonus = 0
+
+    let actionType = 'attack'
+
+    if (
+      action === 'ultimate'
+    ) {
+      if (
+        currentEnergy < 100
+      ) {
+        return
+      }
+
+      actionName =
+        currentAttacker
+          .profile
+          ?.ultimateName ||
+        'Técnica definitiva'
+
+      multiplier = 3
+
+      energyCost = 100
+
+      guaranteedHit = true
+
+      criticalBonus = 15
+
+      actionType =
+        'ultimate'
+    } else if (
+      action.startsWith(
+        'ability-'
+      )
+    ) {
+      const abilityIndex =
+        Number(
+          action.replace(
+            'ability-',
+            ''
+          )
+        )
+
+      const ability =
+        currentAbilities[
+          abilityIndex
+        ]
+
+      if (!ability) {
+        return
+      }
+
+      actionName =
+        ability.name ||
+        'Habilidad'
+
+      energyCost = 25
+
+      if (
+        currentEnergy <
+        energyCost
+      ) {
+        return
+      }
+
+      multiplier =
+        1.45 +
+        abilityIndex * 0.15
+
+      criticalBonus =
+        5
+
+      actionType =
+        'ability'
+    }
+
     setIsProcessingTurn(true)
 
-    const attacker =
-      currentAttackerId ===
-      characterA.id
-        ? characterA
-        : characterB
-
-    const defender =
-      currentAttackerId ===
-      characterA.id
-        ? characterB
-        : characterA
-
     const result =
-      getAttackResult(
-        attacker,
-        defender
+      calculateAttack({
+        attacker:
+          currentAttacker,
+        defender:
+          currentDefender,
+        multiplier,
+        guaranteedHit,
+        criticalBonus,
+      })
+
+    const newEnergy =
+      Math.max(
+        0,
+        currentEnergy -
+          energyCost +
+          (
+            action ===
+            'ultimate'
+              ? 0
+              : result.type ===
+                'miss'
+                ? 8
+                : result.critical
+                  ? 18
+                  : 13
+          )
       )
-
-    /*
-     * ENERGÍA
-     *
-     * Cada turno genera energía.
-     * Los golpes exitosos generan
-     * un poco más.
-     */
-
-    const energyGain =
-      result.type === 'miss'
-        ? 8
-        : result.critical
-          ? 18
-          : 13
 
     setEnergy(
       (previousEnergy) => ({
         ...previousEnergy,
-        [attacker.id]:
+        [currentAttacker.id]:
           Math.min(
             MAX_ENERGY,
-            (previousEnergy[
-              attacker.id
-            ] || 0) +
-              energyGain
+            newEnergy
           ),
       })
     )
 
-    let logText = ''
-
-    if (result.type === 'miss') {
-      logText =
-        `💨 ${defender.name} esquiva el ataque de ${attacker.name}.`
+    if (
+      result.type === 'miss'
+    ) {
+      addLog(
+        `💨 ${currentDefender.name} esquiva ${actionName} de ${currentAttacker.name}.`,
+        'miss'
+      )
     } else if (
       result.type === 'critical'
     ) {
-      logText =
-        `💥 ¡GOLPE CRÍTICO! ${attacker.name} ataca a ${defender.name} y causa ${result.damage} de daño.`
+      addLog(
+        `💥 ¡GOLPE CRÍTICO! ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`,
+        'critical'
+      )
     } else {
-      logText =
-        `⚔️ ${attacker.name} ataca a ${defender.name} y causa ${result.damage} de daño.`
+      const emoji =
+        actionType ===
+        'ultimate'
+          ? '⚡'
+          : actionType ===
+              'ability'
+            ? '✨'
+            : '⚔️'
+
+      addLog(
+        `${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`,
+        actionType
+      )
     }
 
-    setBattleLog(
-      (previousLog) => [
-        ...previousLog,
-        {
-          id: crypto.randomUUID(),
-          type:
-            result.type === 'critical'
-              ? 'critical'
-              : result.type === 'miss'
-                ? 'miss'
-                : 'attack',
-          text: logText,
-        },
-      ]
-    )
+    if (
+      result.damage > 0
+    ) {
+      const currentHp =
+        hp[
+          currentDefender.id
+        ] || 0
 
-    if (result.damage > 0) {
-      const currentDefenderHp =
-        hp[defender.id]
-
-      const newDefenderHp =
+      const newHp =
         Math.max(
           0,
-          currentDefenderHp -
+          currentHp -
             result.damage
         )
 
       setHp(
         (previousHp) => ({
           ...previousHp,
-          [defender.id]:
-            newDefenderHp,
+          [currentDefender.id]:
+            newHp,
         })
       )
 
       if (
-        newDefenderHp <= 0
+        newHp <= 0
       ) {
         setWinnerId(
-          attacker.id
+          currentAttacker.id
         )
 
         setIsBattleFinished(
           true
         )
 
-        setBattleLog(
-          (previousLog) => [
-            ...previousLog,
-            {
-              id: crypto.randomUUID(),
-              type: 'winner',
-              text: `🏆 ¡${attacker.name} gana el combate!`,
-            },
-          ]
+        addLog(
+          `🏆 ¡${currentAttacker.name} gana el combate!`,
+          'winner'
         )
 
         setTimeout(() => {
-          setIsProcessingTurn(false)
+          setIsProcessingTurn(
+            false
+          )
         }, 350)
 
         return
@@ -584,7 +722,7 @@ function BattlePage() {
     }
 
     setCurrentAttackerId(
-      defender.id
+      currentDefender.id
     )
 
     setTurn(
@@ -593,11 +731,15 @@ function BattlePage() {
     )
 
     setTimeout(() => {
-      setIsProcessingTurn(false)
+      setIsProcessingTurn(
+        false
+      )
     }, 350)
   }
 
-  if (characters.length < 2) {
+  if (
+    characters.length < 2
+  ) {
     return (
       <section className="battle-page">
         <p className="eyebrow">
@@ -753,12 +895,8 @@ function BattlePage() {
               <strong>
                 Turno de{' '}
                 {
-                  (
-                    currentAttackerId ===
-                    characterA.id
-                      ? characterA
-                      : characterB
-                  ).name
+                  currentAttacker
+                    ?.name
                 }
               </strong>
             )}
@@ -775,6 +913,10 @@ function BattlePage() {
               character={
                 characterA
               }
+              isActive={
+                currentAttackerId === characterA.id &&
+                !isBattleFinished
+                }
               hp={
                 hp[
                   characterA.id
@@ -804,6 +946,10 @@ function BattlePage() {
               character={
                 characterB
               }
+              isActive={
+                currentAttackerId === characterA.id &&
+                !isBattleFinished
+                }
               hp={
                 hp[
                   characterB.id
@@ -826,54 +972,200 @@ function BattlePage() {
             />
           </div>
 
-          <div className="battle-controls">
-            {!isBattleFinished ? (
+          {!isBattleFinished && (
+            <div className="battle-action-panel" key={currentAttackerId}>
+              <p className="eyebrow">
+                Acciones de{' '}
+                {
+                  currentAttacker
+                    ?.name
+                }
+              </p>
+
+              <div className="battle-actions">
+                <button
+                  className={
+                    selectedAction ===
+                    'basic'
+                      ? 'battle-action active'
+                      : 'battle-action'
+                  }
+                  type="button"
+                  onClick={() =>
+                    setSelectedAction(
+                      'basic'
+                    )
+                  }
+                >
+                  <strong>
+                    ⚔️ Ataque
+                  </strong>
+
+                  <span>
+                    Ataque básico
+                  </span>
+                </button>
+
+                {currentAbilities.map(
+                  (
+                    ability,
+                    index
+                  ) => {
+                    const actionId =
+                      `ability-${index}`
+
+                    const disabled =
+                      currentEnergy <
+                      25
+
+                    return (
+                      <button
+                        className={
+                          selectedAction ===
+                          actionId
+                            ? 'battle-action active'
+                            : 'battle-action'
+                        }
+                        type="button"
+                        key={
+                          ability.id ||
+                          actionId
+                        }
+                        disabled={
+                          disabled
+                        }
+                        onClick={() =>
+                          setSelectedAction(
+                            actionId
+                          )
+                        }
+                      >
+                        <strong>
+                          ✨{' '}
+                          {
+                            ability.name ||
+                            `Habilidad ${
+                              index +
+                              1
+                            }`
+                          }
+                        </strong>
+
+                        <span>
+                          25 energía
+                        </span>
+                      </button>
+                    )
+                  }
+                )}
+
+                <button
+                  className={
+                    selectedAction ===
+                    'ultimate'
+                      ? 'battle-action battle-action-ultimate active'
+                      : 'battle-action battle-action-ultimate'
+                  }
+                  type="button"
+                  disabled={
+                    currentEnergy <
+                    100
+                  }
+                  onClick={() =>
+                    setSelectedAction(
+                      'ultimate'
+                    )
+                  }
+                >
+                  <strong>
+                    ⚡{' '}
+                    {
+                      currentAttacker
+                        ?.profile
+                        ?.ultimateName ||
+                      'Técnica definitiva'
+                    }
+                  </strong>
+
+                  <span>
+                    {currentEnergy >=
+                    100
+                      ? '¡LISTA!'
+                      : `${Math.round(
+                          currentEnergy
+                        )}% de energía`}
+                  </span>
+                </button>
+              </div>
+
               <button
                 className="button battle-attack-button"
                 type="button"
                 disabled={
-                  isProcessingTurn
+                  isProcessingTurn ||
+                  (
+                    selectedAction ===
+                      'ultimate' &&
+                    currentEnergy <
+                      100
+                  ) ||
+                  (
+                    selectedAction.startsWith(
+                      'ability-'
+                    ) &&
+                    currentEnergy <
+                      25
+                  )
                 }
                 onClick={
-                  performTurn
+                  performAction
                 }
               >
                 {isProcessingTurn
                   ? '⚔️ Resolviendo...'
-                  : '⚔️ Resolver turno'}
+                  : selectedAction ===
+                      'ultimate'
+                    ? '⚡ Usar técnica definitiva'
+                    : selectedAction.startsWith(
+                          'ability-'
+                        )
+                      ? '✨ Usar habilidad'
+                      : '⚔️ Atacar'}
               </button>
-            ) : (
-              <>
-                <div className="battle-winner">
-                  <p className="eyebrow">
-                    Ganador
-                  </p>
+            </div>
+          )}
 
-                  <h2>
-                    🏆{' '}
-                    {
-                      (
-                        winnerId ===
-                        characterA.id
-                          ? characterA
-                          : characterB
-                      ).name
-                    }
-                  </h2>
-                </div>
+          {isBattleFinished && (
+            <div className="battle-controls">
+              <div className="battle-winner">
+                <p className="eyebrow">
+                  Ganador
+                </p>
 
-                <button
-                  className="button"
-                  type="button"
-                  onClick={
-                    resetBattle
+                <h2>
+                  🏆{' '}
+                  {
+                    (
+                      winnerId ===
+                      characterA.id
+                        ? characterA
+                        : characterB
+                    ).name
                   }
-                >
-                  Volver a elegir
-                </button>
-              </>
-            )}
-          </div>
+                </h2>
+              </div>
+
+              <button
+                className="button"
+                type="button"
+                onClick={
+                  resetBattle
+                }
+              >
+                Volver a elegir
+              </button>
+            </div>
+          )}
 
           <div className="battle-log">
             <div className="battle-log-header">

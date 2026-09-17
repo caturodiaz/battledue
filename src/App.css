@@ -4522,3 +4522,374 @@ main {
     padding-right: 14px;
   }
 }
+
+/* ========================================
+   BATTLE ACTIONS
+   ======================================== */
+
+.battle-action-panel {
+  display: grid;
+  gap: 14px;
+
+  padding: 20px;
+
+  border: 2px solid #111;
+  background: #f7f6f1;
+  box-shadow: 5px 5px 0 #111;
+}
+
+.battle-action-panel > .eyebrow {
+  margin: 0;
+}
+
+.battle-actions {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.battle-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  min-height: 82px;
+  padding: 14px;
+
+  border: 2px solid #111;
+  border-radius: 0;
+
+  background: #fff;
+  color: #111;
+
+  font-family: inherit;
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease,
+    background .15s ease;
+}
+
+.battle-action:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 #111;
+}
+
+.battle-action.active {
+  background: #111;
+  color: #fff;
+  box-shadow: 4px 4px 0 #a20707;
+}
+
+.battle-action:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.battle-action strong {
+  font-size: .8rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.battle-action span {
+  margin-top: 8px;
+
+  font-size: .65rem;
+  font-weight: 800;
+  opacity: .7;
+}
+
+.battle-action-ultimate {
+  border-color: #a20707;
+}
+
+.battle-action-ultimate.active {
+  background: #a20707;
+  box-shadow: 4px 4px 0 #111;
+}
+
+
+/* ========================================
+   BATTLE LOG
+   ======================================== */
+
+.battle-log-ability {
+  color: #674b00;
+  background: #fff8dc;
+  font-weight: 900;
+}
+
+.battle-log-ultimate {
+  color: #fff;
+  background: #a20707;
+  font-weight: 950;
+}
+
+
+/* ========================================
+   MOBILE
+   ======================================== */
+
+@media (max-width: 760px) {
+  .battle-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .battle-action {
+    min-height: 70px;
+  }
+}
+/* ========================================
+   BATTLE TURN ANIMATIONS
+   ======================================== */
+
+.battle-action-panel {
+  animation: battleTurnPanel .35s ease-out;
+}
+
+@keyframes battleTurnPanel {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* ========================================
+   ACTIVE FIGHTER
+   ======================================== */
+
+.battle-character.is-active {
+  animation:
+    battleFighterEnter .4s ease-out,
+    battleFighterPulse 1.6s ease-in-out .4s infinite;
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes battleFighterEnter {
+  from {
+    opacity: .65;
+    transform: scale(.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes battleFighterPulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.08);
+  }
+}
+
+
+/* ========================================
+   TURN INDICATOR
+   ======================================== */
+
+.battle-round strong {
+  animation: turnTextIn .3s ease-out;
+}
+
+@keyframes turnTextIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* ========================================
+   ACTION BUTTONS
+   ======================================== */
+
+.battle-action {
+  animation: actionEnter .3s ease-out both;
+}
+
+.battle-action:nth-child(1) {
+  animation-delay: .03s;
+}
+
+.battle-action:nth-child(2) {
+  animation-delay: .07s;
+}
+
+.battle-action:nth-child(3) {
+  animation-delay: .11s;
+}
+
+.battle-action:nth-child(4) {
+  animation-delay: .15s;
+}
+
+@keyframes actionEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* ========================================
+   REDUCE MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-action-panel,
+  .battle-character.is-active,
+  .battle-round strong,
+  .battle-action {
+    animation: none;
+  }
+}
+
+/* ========================================
+   ACTIVE TURN BADGE
+   ======================================== */
+
+.battle-character-image {
+  position: relative;
+}
+
+.battle-turn-badge {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  z-index: 5;
+
+  transform: translateX(-50%);
+
+  padding: 8px 14px;
+
+  border: 3px solid #111;
+  background: #fff;
+  color: #111;
+
+  font-size: .7rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  text-transform: uppercase;
+
+  box-shadow: 4px 4px 0 #111;
+
+  animation:
+    battleTurnBadgeIn .35s cubic-bezier(.22, 1, .36, 1),
+    battleTurnBadgeFloat 1.4s ease-in-out .35s infinite;
+}
+
+@keyframes battleTurnBadgeIn {
+  from {
+    opacity: 0;
+    transform:
+      translateX(-50%)
+      translateY(12px)
+      scale(.75);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateX(-50%)
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes battleTurnBadgeFloat {
+  0%,
+  100% {
+    margin-top: 0;
+  }
+
+  50% {
+    margin-top: -5px;
+  }
+}
+
+
+/* ========================================
+   ACTIVE FIGHTER EMPHASIS
+   ======================================== */
+
+.battle-character.is-active {
+  transform: scale(1.02);
+  z-index: 3;
+}
+
+.battle-character.is-active
+.battle-character-image {
+  animation: battleActiveImage .8s ease-in-out infinite alternate;
+}
+
+@keyframes battleActiveImage {
+  from {
+    filter: brightness(1);
+  }
+
+  to {
+    filter: brightness(1.08);
+  }
+}
+
+
+/* ========================================
+   MOBILE
+   ======================================== */
+
+@media (max-width: 760px) {
+  .battle-turn-badge {
+    top: -14px;
+
+    padding: 7px 11px;
+
+    font-size: .62rem;
+  }
+
+  .battle-character.is-active {
+    transform: scale(1.01);
+  }
+}
+
+
+/* ========================================
+   REDUCE MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-turn-badge,
+  .battle-character.is-active
+  .battle-character-image {
+    animation: none;
+  }
+}
