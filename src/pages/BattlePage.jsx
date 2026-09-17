@@ -3,6 +3,7 @@ import { useCharacters } from '../hooks/useCharacters'
 
 const BASE_HP = 100
 const MAX_ENERGY = 100
+const DEFENSE_DAMAGE_REDUCTION = 0.5
 
 function getCharacterImage(character) {
   return (
@@ -153,6 +154,7 @@ function BattleCharacterCard({
   maxHp,
   energy,
   isActive,
+  isDefending,
   side,
 }) {
   const image =
@@ -179,6 +181,10 @@ function BattleCharacterCard({
       className={`battle-character battle-character-${side} ${
         isActive
           ? 'is-active'
+          : ''
+      } ${
+        isDefending
+          ? 'is-defending'
           : ''
       }`}
     >
@@ -236,24 +242,30 @@ function BattleCharacterCard({
         </div>
       </div>
 
-        <div className="battle-character-image">
+      <div className="battle-character-image">
         {isActive && (
-            <div className="battle-turn-badge">
+          <div className="battle-turn-badge">
             ⚔️ ¡TU TURNO!
-            </div>
+          </div>
+        )}
+
+        {isDefending && (
+          <div className="battle-defense-badge">
+            🛡️ DEFENDIENDO
+          </div>
         )}
 
         {image ? (
-            <img
+          <img
             src={image}
             alt={character.name}
-            />
+          />
         ) : (
-            <div className="battle-character-placeholder">
+          <div className="battle-character-placeholder">
             {character.name?.[0] || '?'}
-            </div>
+          </div>
         )}
-        </div>
+      </div>
     </article>
   )
 }
@@ -283,6 +295,9 @@ function BattlePage() {
   const [energy, setEnergy] =
     useState({})
 
+  const [defending, setDefending] =
+    useState({})
+
   const [battleLog, setBattleLog] =
     useState([])
 
@@ -297,6 +312,9 @@ function BattlePage() {
 
   const [selectedAction, setSelectedAction] =
     useState('basic')
+
+  const [battleNotification, setBattleNotification] =
+    useState(null)
 
   const characterA = useMemo(
     () =>
@@ -417,9 +435,24 @@ function BattlePage() {
     currentAttacker,
   ])
 
+  useEffect(() => {
+    if (!battleNotification) {
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setBattleNotification(null)
+    }, 2200)
+
+    return () => {
+      clearTimeout(timeout)
+    }
+  }, [battleNotification])
+
   function addLog(
     text,
-    type = 'attack'
+    type = 'attack',
+    notification = null
   ) {
     setBattleLog(
       (previousLog) => [
@@ -431,6 +464,13 @@ function BattlePage() {
         },
       ]
     )
+
+    if (notification) {
+      setBattleNotification({
+        id: crypto.randomUUID(),
+        ...notification,
+      })
+    }
   }
 
   function startBattle() {
@@ -468,6 +508,11 @@ function BattlePage() {
       [characterB.id]: 0,
     })
 
+    setDefending({
+      [characterA.id]: false,
+      [characterB.id]: false,
+    })
+
     setTurn(1)
 
     setCurrentAttackerId(
@@ -482,6 +527,14 @@ function BattlePage() {
       },
     ])
 
+    setBattleNotification({
+      id: crypto.randomUUID(),
+      icon: '⚔️',
+      title: '¡COMIENZA EL COMBATE!',
+      text: `${firstAttacker.name} tiene la iniciativa`,
+      type: 'system',
+    })
+
     setWinnerId('')
     setIsBattleFinished(false)
     setIsProcessingTurn(false)
@@ -495,11 +548,13 @@ function BattlePage() {
     setCurrentAttackerId('')
     setHp({})
     setEnergy({})
+    setDefending({})
     setBattleLog([])
     setWinnerId('')
     setIsBattleFinished(false)
     setIsProcessingTurn(false)
     setSelectedAction('basic')
+    setBattleNotification(null)
   }
 
   function performAction() {
@@ -515,6 +570,65 @@ function BattlePage() {
 
     const action =
       selectedAction
+
+    /*
+     * DEFENDER
+     */
+
+    if (action === 'defend') {
+      setIsProcessingTurn(true)
+
+      setDefending(
+        (previousDefending) => ({
+          ...previousDefending,
+          [currentAttacker.id]:
+            true,
+        })
+      )
+
+      setEnergy(
+        (previousEnergy) => ({
+          ...previousEnergy,
+          [currentAttacker.id]:
+            Math.min(
+              MAX_ENERGY,
+              (
+                previousEnergy[
+                  currentAttacker.id
+                ] || 0
+              ) + 10
+            ),
+        })
+      )
+
+      addLog(
+        `🛡️ ${currentAttacker.name} se prepara para defenderse y reducirá el próximo daño recibido en un 50%.`,
+        'defend',
+        {
+          icon: '🛡️',
+          title: '¡SE DEFENDIÓ!',
+          text: `${currentAttacker.name} reducirá el próximo daño en un 50%`,
+          type: 'defend',
+        }
+      )
+
+      setCurrentAttackerId(
+        currentDefender.id
+      )
+
+      setTurn(
+        (previousTurn) =>
+          previousTurn + 1
+      )
+
+      setTimeout(() => {
+        setIsProcessingTurn(
+          false
+        )
+      }, 350)
+
+      return
+    }
 
     let actionName =
       'Ataque básico'
@@ -647,16 +761,97 @@ function BattlePage() {
     ) {
       addLog(
         `💨 ${currentDefender.name} esquiva ${actionName} de ${currentAttacker.name}.`,
-        'miss'
+        'miss',
+        {
+          icon: '💨',
+          title: '¡ESQUIVÓ EL ATAQUE!',
+          text: `${currentDefender.name} evitó el ataque de ${currentAttacker.name}`,
+          type: 'miss',
+        }
       )
     } else if (
       result.type === 'critical'
     ) {
+      const wasDefending =
+        defending[
+          currentDefender.id
+        ]
+
+      const finalDamage =
+        wasDefending
+          ? Math.max(
+              1,
+              Math.round(
+                result.damage *
+                  (
+                    1 -
+                    DEFENSE_DAMAGE_REDUCTION
+                  )
+              )
+            )
+          : result.damage
+
+      if (wasDefending) {
+        setDefending(
+          (previousDefending) => ({
+            ...previousDefending,
+            [currentDefender.id]:
+              false,
+          })
+        )
+      }
+
       addLog(
-        `💥 ¡GOLPE CRÍTICO! ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`,
-        'critical'
+        wasDefending
+          ? `🛡️💥 ¡GOLPE CRÍTICO BLOQUEADO! ${currentAttacker.name} causa ${result.damage} de daño a ${currentDefender.name}, pero su defensa lo reduce a ${finalDamage}.`
+          : `💥 ¡GOLPE CRÍTICO! ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`,
+        'critical',
+        {
+          icon: wasDefending
+            ? '🛡️💥'
+            : '💥',
+          title: wasDefending
+            ? '¡DEFENSA CONTRA CRÍTICO!'
+            : '¡GOLPE CRÍTICO!',
+          text: wasDefending
+            ? `${currentDefender.name}: ${result.damage} → ${finalDamage} de daño`
+            : `${currentDefender.name} recibió ${result.damage} de daño`,
+          type: 'critical',
+        }
       )
+
+      result.damage =
+        finalDamage
     } else {
+      const wasDefending =
+        defending[
+          currentDefender.id
+        ]
+
+      const finalDamage =
+        wasDefending
+          ? Math.max(
+              1,
+              Math.round(
+                result.damage *
+                  (
+                    1 -
+                    DEFENSE_DAMAGE_REDUCTION
+                  )
+              )
+            )
+          : result.damage
+
+      if (wasDefending) {
+        setDefending(
+          (previousDefending) => ({
+            ...previousDefending,
+            [currentDefender.id]:
+              false,
+          })
+        )
+      }
+
       const emoji =
         actionType ===
         'ultimate'
@@ -666,10 +861,39 @@ function BattlePage() {
             ? '✨'
             : '⚔️'
 
+      const notificationTitle =
+        actionType ===
+        'ultimate'
+          ? '¡TÉCNICA DEFINITIVA!'
+          : actionType ===
+              'ability'
+            ? '¡HABILIDAD!'
+            : '¡ATAQUE!'
+
       addLog(
-        `${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`,
-        actionType
+        wasDefending
+          ? `🛡️ ${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño, pero ${currentDefender.name} lo reduce a ${finalDamage}.`
+          : `${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`,
+        actionType,
+        {
+          icon: wasDefending
+            ? `🛡️${emoji}`
+            : emoji,
+          title: wasDefending
+            ? '¡DEFENSA!'
+            : notificationTitle,
+          text: wasDefending
+            ? `${currentDefender.name}: ${result.damage} → ${finalDamage} de daño`
+            : `${currentAttacker.name} causó ${result.damage} de daño a ${currentDefender.name}`,
+          type:
+            wasDefending
+              ? 'defend-hit'
+              : actionType,
+        }
       )
+
+      result.damage =
+        finalDamage
     }
 
     if (
@@ -708,7 +932,13 @@ function BattlePage() {
 
         addLog(
           `🏆 ¡${currentAttacker.name} gana el combate!`,
-          'winner'
+          'winner',
+          {
+            icon: '🏆',
+            title: '¡COMBATE TERMINADO!',
+            text: `${currentAttacker.name} es el ganador`,
+            type: 'winner',
+          }
         )
 
         setTimeout(() => {
@@ -886,6 +1116,35 @@ function BattlePage() {
         </div>
       ) : (
         <div className="battle-arena">
+          {battleNotification && (
+            <div
+              className={`battle-notification battle-notification-${battleNotification.type}`}
+              key={
+                battleNotification.id
+              }
+            >
+              <div className="battle-notification-icon">
+                {
+                  battleNotification.icon
+                }
+              </div>
+
+              <div className="battle-notification-content">
+                <strong>
+                  {
+                    battleNotification.title
+                  }
+                </strong>
+
+                <span>
+                  {
+                    battleNotification.text
+                  }
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="battle-round">
             <span>
               ROUND {turn}
@@ -914,9 +1173,15 @@ function BattlePage() {
                 characterA
               }
               isActive={
-                currentAttackerId === characterA.id &&
+                currentAttackerId ===
+                  characterA.id &&
                 !isBattleFinished
-                }
+              }
+              isDefending={
+                defending[
+                  characterA.id
+                ] || false
+              }
               hp={
                 hp[
                   characterA.id
@@ -930,11 +1195,6 @@ function BattlePage() {
                   characterA.id
                 ] || 0
               }
-              isActive={
-                currentAttackerId ===
-                  characterA.id &&
-                !isBattleFinished
-              }
               side="left"
             />
 
@@ -947,9 +1207,15 @@ function BattlePage() {
                 characterB
               }
               isActive={
-                currentAttackerId === characterA.id &&
+                currentAttackerId ===
+                  characterB.id &&
                 !isBattleFinished
-                }
+              }
+              isDefending={
+                defending[
+                  characterB.id
+                ] || false
+              }
               hp={
                 hp[
                   characterB.id
@@ -963,17 +1229,15 @@ function BattlePage() {
                   characterB.id
                 ] || 0
               }
-              isActive={
-                currentAttackerId ===
-                  characterB.id &&
-                !isBattleFinished
-              }
               side="right"
             />
           </div>
 
           {!isBattleFinished && (
-            <div className="battle-action-panel" key={currentAttackerId}>
+            <div
+              className="battle-action-panel"
+              key={currentAttackerId}
+            >
               <p className="eyebrow">
                 Acciones de{' '}
                 {
@@ -1096,6 +1360,29 @@ function BattlePage() {
                         )}% de energía`}
                   </span>
                 </button>
+
+                <button
+                  className={
+                    selectedAction ===
+                    'defend'
+                      ? 'battle-action battle-action-defend active'
+                      : 'battle-action battle-action-defend'
+                  }
+                  type="button"
+                  onClick={() =>
+                    setSelectedAction(
+                      'defend'
+                    )
+                  }
+                >
+                  <strong>
+                    🛡️ Defender
+                  </strong>
+
+                  <span>
+                    -50% próximo daño
+                  </span>
+                </button>
               </div>
 
               <button
@@ -1124,13 +1411,16 @@ function BattlePage() {
                 {isProcessingTurn
                   ? '⚔️ Resolviendo...'
                   : selectedAction ===
-                      'ultimate'
-                    ? '⚡ Usar técnica definitiva'
-                    : selectedAction.startsWith(
-                          'ability-'
-                        )
-                      ? '✨ Usar habilidad'
-                      : '⚔️ Atacar'}
+                      'defend'
+                    ? '🛡️ Defender'
+                    : selectedAction ===
+                        'ultimate'
+                      ? '⚡ Usar técnica definitiva'
+                      : selectedAction.startsWith(
+                            'ability-'
+                          )
+                        ? '✨ Usar habilidad'
+                        : '⚔️ Atacar'}
               </button>
             </div>
           )}
