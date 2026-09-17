@@ -3797,3 +3797,129 @@ main {
   }
 
 }
+
+/* ========================================
+   SELECTOR DE PERSONAJES
+   ======================================== */
+
+.character-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.character-picker {
+  position: relative;
+  width: 300px;
+  margin: 0;
+}
+
+.character-picker::after {
+  content: "▼";
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  pointer-events: none;
+  font-size: .65rem;
+  font-weight: 950;
+  color: #111;
+}
+
+.character-picker select {
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 48px 10px 16px;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  border: 3px solid #111;
+  border-radius: 0;
+
+  background: #f7f5ee;
+  color: #111;
+
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 950;
+  letter-spacing: .02em;
+
+  cursor: pointer;
+
+  box-shadow: 5px 5px 0 #111;
+
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease,
+    background-color .15s ease;
+}
+
+.character-picker select:hover {
+  background: #fff;
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #a20707;
+}
+
+.character-picker select:focus {
+  outline: none;
+  background: #fff;
+  border-color: #a20707;
+  box-shadow: 5px 5px 0 #a20707;
+}
+
+.character-picker select:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #111;
+}
+
+/* Etiqueta superior del selector */
+
+.character-picker {
+  font-size: .68rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: #111;
+}
+
+.character-picker select {
+  display: block;
+  margin-top: 7px;
+}
+
+
+/* ========================================
+   BOTÓN NUEVO PERSONAJE
+   ======================================== */
+
+.character-actions > .button {
+  min-height: 58px;
+  white-space: nowrap;
+}
+
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 760px) {
+  .character-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .character-picker {
+    width: 100%;
+  }
+
+  .character-picker select {
+    min-height: 62px;
+    font-size: 1.1rem;
+  }
+
+  .character-actions > .button {
+    width: 100%;
+  }
+}

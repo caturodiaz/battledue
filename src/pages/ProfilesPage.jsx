@@ -453,7 +453,7 @@ function ProfilesPage() {
 
           <label className="field character-picker">
 
-            Personaje
+            Personaje seleccionado:
 
             <select
               value={selectedId}
