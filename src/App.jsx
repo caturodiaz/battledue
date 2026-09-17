@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import HomePage from './pages/HomePage'
-import CharactersPage from './pages/CharactersPage'
 import GamePage from './pages/GamePage'
 import ProfilesPage from './pages/ProfilesPage'
 import './App.css'
@@ -17,6 +16,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="site-header">
+
         <button
           className="brand"
           onClick={() => navigateTo('home')}
@@ -30,10 +30,20 @@ function App() {
         </button>
 
         <button
-          className={`menu-toggle ${menuOpen ? 'is-open' : ''}`}
+          className={`menu-toggle ${
+            menuOpen ? 'is-open' : ''
+          }`}
           type="button"
-          onClick={() => setMenuOpen((previous) => !previous)}
-          aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+          onClick={() =>
+            setMenuOpen(
+              (previous) => !previous
+            )
+          }
+          aria-label={
+            menuOpen
+              ? 'Cerrar menú'
+              : 'Abrir menú'
+          }
           aria-expanded={menuOpen}
         >
           <span />
@@ -42,16 +52,21 @@ function App() {
         </button>
 
         <nav
-          className={`site-nav ${menuOpen ? 'is-open' : ''}`}
+          className={`site-nav ${
+            menuOpen ? 'is-open' : ''
+          }`}
           aria-label="Navegación principal"
         >
+
           <button
             className={
               page === 'home'
                 ? 'nav-link active'
                 : 'nav-link'
             }
-            onClick={() => navigateTo('home')}
+            onClick={() =>
+              navigateTo('home')
+            }
             type="button"
           >
             Inicio
@@ -63,22 +78,12 @@ function App() {
                 ? 'nav-link active'
                 : 'nav-link'
             }
-            onClick={() => navigateTo('game')}
+            onClick={() =>
+              navigateTo('game')
+            }
             type="button"
           >
             Jugar
-          </button>
-
-          <button
-            className={
-              page === 'characters'
-                ? 'nav-link active'
-                : 'nav-link'
-            }
-            onClick={() => navigateTo('characters')}
-            type="button"
-          >
-            Personajes
           </button>
 
           <button
@@ -87,35 +92,42 @@ function App() {
                 ? 'nav-link active'
                 : 'nav-link'
             }
-            onClick={() => navigateTo('profiles')}
+            onClick={() =>
+              navigateTo('profiles')
+            }
             type="button"
           >
-            Perfiles
+            Personajes
           </button>
+
         </nav>
       </header>
 
       <main>
+
         {page === 'home' && (
           <HomePage
-            onPlay={() => navigateTo('game')}
-            onCharacters={() => navigateTo('characters')}
+            onPlay={() =>
+              navigateTo('game')
+            }
+            onCharacters={() =>
+              navigateTo('profiles')
+            }
           />
         )}
 
         {page === 'game' && (
           <GamePage
-            onCharacters={() => navigateTo('characters')}
+            onCharacters={() =>
+              navigateTo('profiles')
+            }
           />
-        )}
-
-        {page === 'characters' && (
-          <CharactersPage />
         )}
 
         {page === 'profiles' && (
           <ProfilesPage />
         )}
+
       </main>
     </div>
   )
