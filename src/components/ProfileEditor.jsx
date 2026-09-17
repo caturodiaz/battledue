@@ -48,7 +48,11 @@ function normalizeAbilities(abilities = []) {
   }))
 }
 
-function ProfileEditor({ character, onSave, onCancel }) {
+function ProfileEditor({
+  character,
+  onSave,
+  onCancel,
+}) {
   const [profile, setProfile] = useState(() => ({
     ...profileDefaults,
     ...character.profile,
@@ -67,17 +71,48 @@ function ProfileEditor({ character, onSave, onCancel }) {
     },
   }))
 
-  const [showPrimaryImageInput, setShowPrimaryImageInput] = useState(
+  /*
+   * DATOS DEL JUEGO
+   *
+   * Estos datos pertenecen al personaje,
+   * no al profile.
+   */
+
+    const [gameData, setGameData] = useState(() => ({
+      age:
+        character.age === '' ||
+        character.age === undefined ||
+        character.age === null
+          ? ''
+          : Number(character.age),
+
+      gender: character.gender || '',
+      species: character.species || '',
+      alignment: character.alignment || '',
+      power: character.power || '',
+      weapon: character.weapon || '',
+    }))
+
+  const [showPrimaryImageInput, setShowPrimaryImageInput] =
+    useState(
       Boolean(character.profile?.primaryImage)
     )
 
-    const [showUltimateImageInput, setShowUltimateImageInput] = useState(
+  const [showUltimateImageInput, setShowUltimateImageInput] =
+    useState(
       Boolean(character.profile?.ultimateImage)
     )
 
   const update = (key, value) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
+      [key]: value,
+    }))
+  }
+
+  const updateGameData = (key, value) => {
+    setGameData((previousGameData) => ({
+      ...previousGameData,
       [key]: value,
     }))
   }
@@ -89,6 +124,7 @@ function ProfileEditor({ character, onSave, onCancel }) {
   const addGalleryImage = () => {
     setProfile((previousProfile) => ({
       ...previousProfile,
+
       galleryImages: [
         ...previousProfile.galleryImages,
         createGalleryImage(),
@@ -96,27 +132,37 @@ function ProfileEditor({ character, onSave, onCancel }) {
     }))
   }
 
-  const updateGalleryImage = (imageId, value) => {
+  const updateGalleryImage = (
+    imageId,
+    value
+  ) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      galleryImages: previousProfile.galleryImages.map(
-        (image) =>
-          image.id === imageId
-            ? {
-                ...image,
-                url: value,
-              }
-            : image
-      ),
+
+      galleryImages:
+        previousProfile.galleryImages.map(
+          (image) =>
+            image.id === imageId
+              ? {
+                  ...image,
+                  url: value,
+                }
+              : image
+        ),
     }))
   }
 
-  const removeGalleryImage = (imageId) => {
+  const removeGalleryImage = (
+    imageId
+  ) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      galleryImages: previousProfile.galleryImages.filter(
-        (image) => image.id !== imageId
-      ),
+
+      galleryImages:
+        previousProfile.galleryImages.filter(
+          (image) =>
+            image.id !== imageId
+        ),
     }))
   }
 
@@ -127,6 +173,7 @@ function ProfileEditor({ character, onSave, onCancel }) {
   const addAbility = () => {
     setProfile((previousProfile) => ({
       ...previousProfile,
+
       abilities: [
         ...previousProfile.abilities,
         createAbility(),
@@ -141,52 +188,59 @@ function ProfileEditor({ character, onSave, onCancel }) {
   ) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      abilities: previousProfile.abilities.map(
-        (ability) =>
-          ability.id === abilityId
-            ? {
-                ...ability,
-                [key]: value,
-              }
-            : ability
-      ),
+
+      abilities:
+        previousProfile.abilities.map(
+          (ability) =>
+            ability.id === abilityId
+              ? {
+                  ...ability,
+                  [key]: value,
+                }
+              : ability
+        ),
     }))
   }
 
-  const removeAbility = (abilityId) => {
+  const removeAbility = (
+    abilityId
+  ) => {
     setProfile((previousProfile) => ({
       ...previousProfile,
-      abilities: previousProfile.abilities.filter(
-        (ability) =>
-          ability.id !== abilityId
-      ),
+
+      abilities:
+        previousProfile.abilities.filter(
+          (ability) =>
+            ability.id !== abilityId
+        ),
     }))
   }
 
   /*
    * IMAGEN PRINCIPAL
-   *
-   * Se utiliza una URL, igual que en la galería.
-   * La imagen no se muestra dentro del editor.
    */
 
-    const addPrimaryImage = () => {
-      setShowPrimaryImageInput(true)
-    }
+  const addPrimaryImage = () => {
+    setShowPrimaryImageInput(true)
+  }
 
-    const removePrimaryImage = () => {
-      update('primaryImage', '')
-      setShowPrimaryImageInput(false)
-    }
+  const removePrimaryImage = () => {
+    update('primaryImage', '')
+    setShowPrimaryImageInput(false)
+  }
 
-    const addUltimateImage = () => {
-      setShowUltimateImageInput(true)
-    }
+  /*
+   * IMAGEN DE TÉCNICA
+   */
 
-    const removeUltimateImage = () => {
-      update('ultimateImage', '')
-      setShowUltimateImageInput(false)
-    }
+  const addUltimateImage = () => {
+    setShowUltimateImageInput(true)
+  }
+
+  const removeUltimateImage = () => {
+    update('ultimateImage', '')
+    setShowUltimateImageInput(false)
+  }
 
   /*
    * GUARDAR
@@ -207,7 +261,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
             ...image,
             url: image.url.trim(),
           }))
-          .filter((image) => image.url),
+          .filter(
+            (image) => image.url
+          ),
 
       abilities:
         profile.abilities
@@ -227,7 +283,23 @@ function ProfileEditor({ character, onSave, onCancel }) {
         profile.ultimateImage?.trim() || '',
     }
 
-    onSave(cleanedProfile)
+    const cleanedGameData = {
+      age:
+        gameData.age === ''
+          ? ''
+          : Number(gameData.age),
+
+      gender: gameData.gender.trim(),
+      species: gameData.species.trim(),
+      alignment: gameData.alignment.trim(),
+      power: gameData.power.trim(),
+      weapon: gameData.weapon.trim(),
+    }
+
+    onSave(
+      cleanedProfile,
+      cleanedGameData
+    )
   }
 
   return (
@@ -235,7 +307,11 @@ function ProfileEditor({ character, onSave, onCancel }) {
       className="profile-editor"
       onSubmit={handleSubmit}
     >
+
+      {/* HEADER */}
+
       <div className="profile-editor-header">
+
         <div>
           <p className="eyebrow">
             Ficha de combate
@@ -260,11 +336,142 @@ function ProfileEditor({ character, onSave, onCancel }) {
             ×
           </button>
         )}
+
       </div>
 
-      {/* INFORMACIÓN PRINCIPAL */}
+      {/* ========================================
+          DATOS DEL JUEGO
+          ======================================== */}
+
+      <section className="profile-editor-section">
+
+        <div className="ultimate-editor-header">
+
+          <div>
+            <p className="eyebrow">
+              Datos del juego
+            </p>
+
+            <h3>
+              Información para BattleDue
+            </h3>
+          </div>
+
+        </div>
+
+        <div className="profile-editor-grid">
+
+        <label className="field">
+          Edad
+
+          <input
+            type="number"
+            min="0"
+            value={gameData.age}
+            onChange={(event) =>
+              updateGameData(
+                'age',
+                event.target.value
+              )
+            }
+            placeholder="Ej. 58"
+          />
+
+          <span className="field-suffix">
+            años
+          </span>
+        </label>
+
+          <label className="field">
+            Género
+
+            <input
+              type="text"
+              value={gameData.gender}
+              onChange={(event) =>
+                updateGameData(
+                  'gender', 
+                  event.target.value
+                )
+              }
+              placeholder="Ej. Masculino"
+            />
+          </label>
+
+          <label className="field">
+            Especie
+
+            <input
+              type="text"
+              value={gameData.species}
+              onChange={(event) =>
+                updateGameData(
+                  'species',
+                  event.target.value
+                )
+              }
+              placeholder="Ej. Humano"
+            />
+          </label>
+
+          <label className="field">
+            Alineación
+
+            <input
+              type="text"
+              value={gameData.alignment}
+              onChange={(event) =>
+                updateGameData(
+                  'alignment',
+                  event.target.value
+                )
+              }
+              placeholder="Ej. Héroe"
+            />
+          </label>
+
+          <label className="field">
+            Poder
+
+            <input
+              type="text"
+              value={gameData.power}
+              onChange={(event) =>
+                updateGameData(
+                  'power',
+                  event.target.value
+                )
+              }
+              placeholder="Ej. Muy alto"
+            />
+          </label>
+
+          <label className="field">
+            Arma
+
+            <input
+              type="text"
+              value={gameData.weapon}
+              onChange={(event) =>
+                updateGameData(
+                  'weapon',
+                  event.target.value
+                )
+              }
+              placeholder="Ej. Espada"
+            />
+          </label>
+
+        </div>
+
+      </section>
+
+      {/* ========================================
+          INFORMACIÓN PRINCIPAL
+          ======================================== */}
 
       <div className="profile-editor-section">
+
         <div className="profile-editor-grid">
 
           <label className="field">
@@ -278,7 +485,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
                   event.target.value
                 )
               }
-              placeholder={character.name}
+              placeholder={
+                character.name
+              }
             />
           </label>
 
@@ -318,6 +527,7 @@ function ProfileEditor({ character, onSave, onCancel }) {
           <div className="image-url-editor">
 
             <div className="image-url-editor-header">
+
               <label className="field-label">
                 Imagen principal
               </label>
@@ -326,17 +536,21 @@ function ProfileEditor({ character, onSave, onCancel }) {
                 <button
                   className="button secondary small"
                   type="button"
-                  onClick={addPrimaryImage}
+                  onClick={
+                    addPrimaryImage
+                  }
                 >
                   + Agregar imagen
                 </button>
               )}
+
             </div>
 
             {showPrimaryImageInput && (
               <div className="image-url-editor-item">
 
                 <div className="image-url-editor-item-header">
+
                   <span>
                     URL de imagen
                   </span>
@@ -351,6 +565,7 @@ function ProfileEditor({ character, onSave, onCancel }) {
                   >
                     ×
                   </button>
+
                 </div>
 
                 <input
@@ -366,6 +581,7 @@ function ProfileEditor({ character, onSave, onCancel }) {
                   }
                   placeholder="https://i.ibb.co/..."
                 />
+
               </div>
             )}
 
@@ -387,13 +603,17 @@ function ProfileEditor({ character, onSave, onCancel }) {
           </label>
 
         </div>
+
       </div>
 
-      {/* GALERÍA */}
+      {/* ========================================
+          GALERÍA
+          ======================================== */}
 
       <section className="gallery-editor">
 
         <div className="gallery-editor-header">
+
           <div>
             <p className="eyebrow">
               Imágenes
@@ -407,10 +627,13 @@ function ProfileEditor({ character, onSave, onCancel }) {
           <button
             className="button secondary small"
             type="button"
-            onClick={addGalleryImage}
+            onClick={
+              addGalleryImage
+            }
           >
             + Agregar imagen
           </button>
+
         </div>
 
         {profile.galleryImages.length === 0 ? (
@@ -432,7 +655,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
 
                     <span>
                       Vista{' '}
-                      {String(index + 1).padStart(
+                      {String(
+                        index + 1
+                      ).padStart(
                         2,
                         '0'
                       )}
@@ -482,13 +707,16 @@ function ProfileEditor({ character, onSave, onCancel }) {
 
       </section>
 
-      {/* HABILIDADES */}
+      {/* ========================================
+          HABILIDADES
+          ======================================== */}
 
       <section className="abilities-editor">
 
         <div className="abilities-editor-header">
 
           <div>
+
             <p className="eyebrow">
               Perfil de combate
             </p>
@@ -496,12 +724,15 @@ function ProfileEditor({ character, onSave, onCancel }) {
             <h3>
               Habilidades
             </h3>
+
           </div>
 
           <button
             className="button secondary small"
             type="button"
-            onClick={addAbility}
+            onClick={
+              addAbility
+            }
           >
             + Agregar habilidad
           </button>
@@ -528,7 +759,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
                     <div>
                       <span>
                         Habilidad{' '}
-                        {String(index + 1).padStart(
+                        {String(
+                          index + 1
+                        ).padStart(
                           2,
                           '0'
                         )}
@@ -559,7 +792,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
                       Nombre
 
                       <input
-                        value={ability.name}
+                        value={
+                          ability.name
+                        }
                         onChange={(event) =>
                           updateAbility(
                             ability.id,
@@ -603,7 +838,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
 
       </section>
 
-      {/* ATRIBUTOS */}
+      {/* ========================================
+          ATRIBUTOS
+          ======================================== */}
 
       <fieldset className="stats-editor">
 
@@ -611,7 +848,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
           Atributos
         </legend>
 
-        {Object.entries(statLabels).map(
+        {Object.entries(
+          statLabels
+        ).map(
           ([key, label]) => (
             <label key={key}>
 
@@ -623,10 +862,13 @@ function ProfileEditor({ character, onSave, onCancel }) {
                 type="range"
                 min="0"
                 max="6"
-                value={profile.stats[key]}
+                value={
+                  profile.stats[key]
+                }
                 onChange={(event) =>
                   update('stats', {
                     ...profile.stats,
+
                     [key]: Number(
                       event.target.value
                     ),
@@ -635,7 +877,10 @@ function ProfileEditor({ character, onSave, onCancel }) {
               />
 
               <b>
-                {profile.stats[key]}/6
+                {
+                  profile.stats[key]
+                }
+                /6
               </b>
 
             </label>
@@ -644,13 +889,16 @@ function ProfileEditor({ character, onSave, onCancel }) {
 
       </fieldset>
 
-      {/* TÉCNICA DEFINITIVA */}
+      {/* ========================================
+          TÉCNICA DEFINITIVA
+          ======================================== */}
 
       <section className="ultimate-editor">
 
         <div className="ultimate-editor-header">
 
           <div>
+
             <p className="eyebrow">
               Técnica especial
             </p>
@@ -658,6 +906,7 @@ function ProfileEditor({ character, onSave, onCancel }) {
             <h3>
               Técnica definitiva
             </h3>
+
           </div>
 
         </div>
@@ -669,7 +918,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
             Nombre
 
             <input
-              value={profile.ultimateName}
+              value={
+                profile.ultimateName
+              }
               onChange={(event) =>
                 update(
                   'ultimateName',
@@ -769,7 +1020,9 @@ function ProfileEditor({ character, onSave, onCancel }) {
 
       </section>
 
-      {/* ACCIONES */}
+      {/* ========================================
+          ACCIONES
+          ======================================== */}
 
       <div className="profile-editor-actions">
 

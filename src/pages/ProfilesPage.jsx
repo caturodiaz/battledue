@@ -22,6 +22,7 @@ function ProfilesPage() {
     return (
       <section className="empty-state">
         <h2>No hay personajes disponibles</h2>
+
         <p>
           Crea un personaje antes de diseñar su perfil.
         </p>
@@ -32,6 +33,7 @@ function ProfilesPage() {
   const profile = {
     ...profileDefaults,
     ...character.profile,
+
     stats: {
       ...profileDefaults.stats,
       ...character.profile?.stats,
@@ -47,8 +49,22 @@ function ProfilesPage() {
     setIsEditorOpen(false)
   }
 
-  const handleSave = (newProfile) => {
+  /*
+   * Ahora recibimos:
+   *
+   * 1. newProfile
+   * 2. gameData
+   *
+   * gameData contiene los datos que utiliza el Wordle.
+   */
+
+  const handleSave = (
+    newProfile,
+    gameData
+  ) => {
     editCharacter(character.id, {
+      ...gameData,
+
       profile: newProfile,
     })
 
@@ -56,7 +72,9 @@ function ProfilesPage() {
     setIsEditorOpen(false)
   }
 
-  const handleCharacterChange = (event) => {
+  const handleCharacterChange = (
+    event
+  ) => {
     setSelectedId(event.target.value)
     setIsEditorOpen(false)
     setNotice('')
@@ -66,7 +84,9 @@ function ProfilesPage() {
     <section className="profiles-page">
 
       <div className="page-heading">
+
         <div>
+
           <p className="eyebrow">
             Fichas de combate
           </p>
@@ -78,25 +98,35 @@ function ProfilesPage() {
           <p>
             Personaliza la presentación de cada personaje.
           </p>
+
         </div>
 
         <label className="field character-picker">
+
           Personaje
 
           <select
             value={selectedId}
-            onChange={handleCharacterChange}
+            onChange={
+              handleCharacterChange
+            }
           >
-            {characters.map((item) => (
-              <option
-                value={item.id}
-                key={item.id}
-              >
-                {item.name}
-              </option>
-            ))}
+
+            {characters.map(
+              (item) => (
+                <option
+                  value={item.id}
+                  key={item.id}
+                >
+                  {item.name}
+                </option>
+              )
+            )}
+
           </select>
+
         </label>
+
       </div>
 
       {notice && (
@@ -108,8 +138,11 @@ function ProfilesPage() {
       <div className="profile-workspace">
 
         <div className="profile-preview">
+
           <div className="profile-preview-header">
+
             <div>
+
               <p className="eyebrow">
                 Vista previa
               </p>
@@ -117,21 +150,26 @@ function ProfilesPage() {
               <h2>
                 Perfil de {character.name}
               </h2>
+
             </div>
 
             <button
               className="button"
               type="button"
-              onClick={openEditor}
+              onClick={
+                openEditor
+              }
             >
               Editar perfil
             </button>
+
           </div>
 
           <CharacterProfile
             character={character}
             profile={profile}
           />
+
         </div>
 
       </div>
@@ -140,19 +178,24 @@ function ProfilesPage() {
         <div
           className="profile-modal-backdrop"
           onMouseDown={(event) => {
+
             if (
-              event.target === event.currentTarget
+              event.target ===
+              event.currentTarget
             ) {
               closeEditor()
             }
+
           }}
         >
+
           <div
             className="profile-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="profile-modal-title"
           >
+
             <div className="profile-modal-scroll">
 
               <ProfileEditor
@@ -163,7 +206,9 @@ function ProfilesPage() {
               />
 
             </div>
+
           </div>
+
         </div>
       )}
 
