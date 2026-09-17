@@ -5365,3 +5365,494 @@ main {
     min-height: 72px;
   }
 }
+
+/* =========================================
+   COMBATE - EFECTOS VISUALES
+   ========================================= */
+
+/* -----------------------------------------
+   GOLPE NORMAL
+   ----------------------------------------- */
+
+.battle-character.is-hit {
+  animation:
+    characterHit 0.45s
+    cubic-bezier(0.36, 0, 0.66, -0.56);
+}
+
+.battle-character.is-hit
+  .battle-character-image img {
+  filter:
+    brightness(1.25)
+    saturate(1.25);
+}
+
+
+/* -----------------------------------------
+   GOLPE CRÍTICO
+   ----------------------------------------- */
+
+.battle-character.is-critical {
+  animation:
+    criticalHit 0.55s
+    ease-out;
+}
+
+.battle-character.is-critical
+  .battle-character-image {
+  filter:
+    brightness(1.35)
+    saturate(1.4);
+}
+
+.battle-character.is-critical
+  .battle-character-image::after {
+  content: '💥';
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 5rem;
+  pointer-events: none;
+  animation:
+    criticalExplosion 0.55s
+    ease-out forwards;
+}
+
+
+/* -----------------------------------------
+   ESQUIVA
+   ----------------------------------------- */
+
+.battle-character.is-dodging {
+  animation:
+    characterDodge 0.5s
+    ease-out;
+}
+
+.battle-character.is-dodging
+  .battle-character-image img {
+  filter:
+    brightness(1.15)
+    blur(0.5px);
+}
+
+
+/* -----------------------------------------
+   DERROTA
+   ----------------------------------------- */
+
+.battle-character.is-defeated {
+  animation:
+    characterDefeat 0.8s
+    ease-out forwards;
+}
+
+.battle-character.is-defeated
+  .battle-character-image {
+  filter:
+    grayscale(0.8)
+    brightness(0.55);
+}
+
+
+/* -----------------------------------------
+   VICTORIA
+   ----------------------------------------- */
+
+.battle-character.is-victorious {
+  animation:
+    characterVictory 1.2s
+    ease-in-out infinite;
+}
+
+.battle-character.is-victorious
+  .battle-character-image {
+  filter:
+    brightness(1.12)
+    saturate(1.2);
+}
+
+.battle-character.is-victorious
+  .battle-character-image::before {
+  content: '🏆';
+  position: absolute;
+  z-index: 10;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 3rem;
+  pointer-events: none;
+  animation:
+    trophyFloat 1.2s
+    ease-in-out infinite;
+}
+
+
+/* =========================================
+   BARRA DE VIDA
+   ========================================= */
+
+.battle-hp-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.battle-hp-fill {
+  transition:
+    width 0.65s
+    cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.battle-hp-fill.hp-is-changing {
+  animation:
+    hpFlash 0.5s
+    ease-out;
+}
+
+
+/* Brillo que recorre la barra cuando cambia */
+.battle-hp-fill.hp-is-changing::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.75),
+    transparent
+  );
+  animation:
+    hpShine 0.5s
+    ease-out;
+}
+
+
+/* -----------------------------------------
+   VIDA BAJA
+   ----------------------------------------- */
+
+.battle-character:has(
+  .battle-hp-fill[style*='width: 3']
+) .battle-hp-bar,
+.battle-character:has(
+  .battle-hp-fill[style*='width: 2']
+) .battle-hp-bar,
+.battle-character:has(
+  .battle-hp-fill[style*='width: 1']
+) .battle-hp-bar {
+  animation:
+    lowHpPulse 1s
+    ease-in-out infinite;
+}
+
+
+/* =========================================
+   ENERGÍA
+   ========================================= */
+
+.battle-energy {
+  transition:
+    transform 0.25s ease;
+}
+
+.battle-energy.energy-is-charging {
+  animation:
+    energyCharge 0.6s
+    ease-out;
+}
+
+.battle-energy.energy-is-charging
+  .battle-energy-fill {
+  filter:
+    brightness(1.5);
+}
+
+.battle-energy.energy-is-full {
+  animation:
+    energyReady 1.4s
+    ease-in-out infinite;
+}
+
+.battle-energy.energy-is-full
+  .battle-energy-fill {
+  box-shadow:
+    0 0 8px rgba(255, 220, 80, 0.8),
+    0 0 18px rgba(255, 190, 40, 0.5);
+}
+
+
+/* =========================================
+   ANIMACIONES
+   ========================================= */
+
+@keyframes characterHit {
+  0% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-10px);
+  }
+
+  40% {
+    transform: translateX(9px);
+  }
+
+  60% {
+    transform: translateX(-6px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+
+@keyframes criticalHit {
+  0% {
+    transform: scale(1);
+  }
+
+  20% {
+    transform: scale(1.04);
+  }
+
+  40% {
+    transform: scale(0.96);
+  }
+
+  65% {
+    transform: scale(1.025);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+
+@keyframes criticalExplosion {
+  0% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(0);
+  }
+
+  25% {
+    opacity: 1;
+    transform:
+      translate(-50%, -50%)
+      scale(1.35);
+  }
+
+  65% {
+    opacity: 1;
+    transform:
+      translate(-50%, -50%)
+      scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(1.5);
+  }
+}
+
+
+@keyframes characterDodge {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  30% {
+    transform: translateX(-25px);
+    opacity: 0.7;
+  }
+
+  60% {
+    transform: translateX(25px);
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+
+@keyframes characterDefeat {
+  0% {
+    transform: translateY(0)
+      rotate(0);
+    opacity: 1;
+  }
+
+  35% {
+    transform: translateY(-10px)
+      rotate(-2deg);
+  }
+
+  100% {
+    transform: translateY(25px)
+      rotate(4deg);
+    opacity: 0.55;
+  }
+}
+
+
+@keyframes characterVictory {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+
+@keyframes trophyFloat {
+  0%,
+  100% {
+    transform:
+      translateX(-50%)
+      translateY(0)
+      rotate(-4deg);
+  }
+
+  50% {
+    transform:
+      translateX(-50%)
+      translateY(-8px)
+      rotate(4deg);
+  }
+}
+
+
+@keyframes hpFlash {
+  0% {
+    filter: brightness(1);
+  }
+
+  30% {
+    filter: brightness(1.7);
+  }
+
+  100% {
+    filter: brightness(1);
+  }
+}
+
+
+@keyframes hpShine {
+  from {
+    left: -40%;
+  }
+
+  to {
+    left: 120%;
+  }
+}
+
+
+@keyframes lowHpPulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.25);
+  }
+}
+
+
+@keyframes energyCharge {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+
+@keyframes energyReady {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.3);
+  }
+}
+
+
+/* =========================================
+   TÉCNICA DEFINITIVA
+   ========================================= */
+
+.battle-character.is-critical
+  .battle-character-image {
+  position: relative;
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+@media (max-width: 700px) {
+  .battle-character.is-critical
+    .battle-character-image::after {
+    font-size: 3.5rem;
+  }
+
+  .battle-character.is-victorious
+    .battle-character-image::before {
+    font-size: 2.4rem;
+  }
+
+  @keyframes characterHit {
+    0% {
+      transform: translateX(0);
+    }
+
+    25% {
+      transform: translateX(-6px);
+    }
+
+    50% {
+      transform: translateX(6px);
+    }
+
+    75% {
+      transform: translateX(-4px);
+    }
+
+    100% {
+      transform: translateX(0);
+    }
+  }
+}

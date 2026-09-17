@@ -156,6 +156,11 @@ function BattleCharacterCard({
   isActive,
   isDefending,
   side,
+  combatEffect,
+  hpFlash,
+  energyPulse,
+  isDefeated,
+  isVictorious,
 }) {
   const image =
     getCharacterImage(character)
@@ -178,15 +183,29 @@ function BattleCharacterCard({
 
   return (
     <article
-      className={`battle-character battle-character-${side} ${
-        isActive
-          ? 'is-active'
-          : ''
-      } ${
-        isDefending
-          ? 'is-defending'
-          : ''
-      }`}
+    className={`battle-character battle-character-${side} ${
+        isActive ? 'is-active' : ''
+    } ${
+        isDefending ? 'is-defending' : ''
+    } ${
+        hpFlash ? 'is-hit' : ''
+    } ${
+        combatEffect === 'critical'
+        ? 'is-critical'
+        : ''
+    } ${
+        combatEffect === 'miss'
+        ? 'is-dodging'
+        : ''
+    } ${
+        isDefeated
+        ? 'is-defeated'
+        : ''
+    } ${
+        isVictorious
+        ? 'is-victorious'
+        : ''
+    }`}
     >
       <div className="battle-character-heading">
         <div>
@@ -208,10 +227,14 @@ function BattleCharacterCard({
 
       <div className="battle-hp-bar">
         <div
-          className="battle-hp-fill"
-          style={{
+        className={`battle-hp-fill ${
+            hpFlash
+            ? 'hp-is-changing'
+            : ''
+        }`}
+        style={{
             width: `${hpPercentage}%`,
-          }}
+        }}
         />
       </div>
 
@@ -223,7 +246,17 @@ function BattleCharacterCard({
         </span>
       </div>
 
-      <div className="battle-energy">
+      <div
+        className={`battle-energy ${
+            energyPulse
+            ? 'energy-is-charging'
+            : ''
+        } ${
+            energy >= 100
+            ? 'energy-is-full'
+            : ''
+        }`}
+        >
         <div className="battle-energy-header">
           <span>ENERGÍA</span>
 
@@ -315,6 +348,15 @@ function BattlePage() {
 
   const [battleNotification, setBattleNotification] =
     useState(null)
+
+    const [combatEffect, setCombatEffect] =
+    useState(null)
+
+    const [hpFlash, setHpFlash] =
+    useState({})
+
+    const [energyPulse, setEnergyPulse] =
+    useState({})
 
   const characterA = useMemo(
     () =>
@@ -508,6 +550,8 @@ function BattlePage() {
       [characterB.id]: 0,
     })
 
+
+
     setDefending({
       [characterA.id]: false,
       [characterB.id]: false,
@@ -600,6 +644,24 @@ function BattlePage() {
             ),
         })
       )
+
+      setEnergyPulse(
+        (previous) => ({
+            ...previous,
+            [currentAttacker.id]:
+            true,
+        })
+        )
+
+        setTimeout(() => {
+        setEnergyPulse(
+            (previous) => ({
+            ...previous,
+            [currentAttacker.id]:
+                false,
+            })
+        )
+        }, 600)
 
       addLog(
         `🛡️ ${currentAttacker.name} se prepara para defenderse y reducirá el próximo daño recibido en un 50%.`,
@@ -726,6 +788,14 @@ function BattlePage() {
         guaranteedHit,
         criticalBonus,
       })
+
+      setCombatEffect(
+        result.type
+        )
+
+        setTimeout(() => {
+        setCombatEffect(null)
+        }, 550)
 
     const newEnergy =
       Math.max(
@@ -899,6 +969,24 @@ function BattlePage() {
     if (
       result.damage > 0
     ) {
+
+        setHpFlash(
+            (previous) => ({
+                ...previous,
+                [currentDefender.id]:
+                true,
+            })
+            )
+
+            setTimeout(() => {
+            setHpFlash(
+                (previous) => ({
+                ...previous,
+                [currentDefender.id]:
+                    false,
+                })
+            )
+            }, 500)
       const currentHp =
         hp[
           currentDefender.id
@@ -1196,6 +1284,23 @@ function BattlePage() {
                 ] || 0
               }
               side="left"
+              combatEffect={
+                currentAttackerId === characterA.id
+                    ? combatEffect
+                    : null
+                }
+                hpFlash={
+                hpFlash[characterA.id] || false
+                }
+                energyPulse={
+                energyPulse[characterA.id] || false
+                }
+                isDefeated={
+                hp[characterA.id] <= 0
+                }
+                isVictorious={
+                winnerId === characterA.id
+                }
             />
 
             <div className="battle-vs">
@@ -1230,6 +1335,23 @@ function BattlePage() {
                 ] || 0
               }
               side="right"
+                combatEffect={
+                currentAttackerId === characterB.id
+                    ? combatEffect
+                    : null
+                }
+                hpFlash={
+                hpFlash[characterB.id] || false
+                }
+                energyPulse={
+                energyPulse[characterB.id] || false
+                }
+                isDefeated={
+                hp[characterB.id] <= 0
+                }
+                isVictorious={
+                winnerId === characterB.id
+                }
             />
           </div>
 
