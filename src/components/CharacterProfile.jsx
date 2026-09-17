@@ -109,8 +109,7 @@ function CharacterProfile({
             </span>
 
             <h2>
-              {profile.title ||
-                character.name}
+              {character.name}
             </h2>
 
             <p>

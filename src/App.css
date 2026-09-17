@@ -3640,3 +3640,160 @@ main {
   }
 
 }
+
+/* ========================================
+   ACCIONES DEL PERSONAJE
+   ======================================== */
+
+.character-profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* ========================================
+   BOTÓN PELIGRO
+   ======================================== */
+
+.button.danger {
+  border-color: #7d3030;
+  background: #351717;
+  color: #ffb4b4;
+}
+
+.button.danger:hover {
+  border-color: #b64646;
+  background: #541d1d;
+  color: #fff;
+}
+
+
+/* ========================================
+   MODAL DE ELIMINACIÓN
+   ======================================== */
+
+.delete-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(0, 0, 0, .78);
+
+  backdrop-filter: blur(5px);
+}
+
+
+.delete-modal {
+  width: min(100%, 460px);
+
+  padding: 28px;
+
+  border: 1px solid #543838;
+
+  background:
+    linear-gradient(
+      145deg,
+      #151114,
+      #0c0b0d
+    );
+
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, .55);
+
+  text-align: center;
+}
+
+
+.delete-modal-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 auto 16px;
+
+  border: 1px solid #a83f3f;
+
+  background: #3b1717;
+
+  color: #ff9c9c;
+
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+
+.delete-modal h2 {
+  margin: 0 0 12px;
+
+  color: #fff;
+
+  font-size: 1.35rem;
+}
+
+
+.delete-modal p {
+  margin: 8px 0;
+
+  color: #aaa;
+
+  font-size: .82rem;
+
+  line-height: 1.5;
+}
+
+
+.delete-modal p strong {
+  color: #fff;
+}
+
+
+.delete-modal-actions {
+  display: flex;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  margin-top: 24px;
+}
+
+
+.delete-modal-actions .button {
+  min-width: 150px;
+}
+
+@media (max-width: 600px) {
+
+  .character-profile-actions {
+    width: 100%;
+
+    flex-direction: column;
+  }
+
+  .character-profile-actions .button {
+    width: 100%;
+  }
+
+  .delete-modal {
+    padding: 22px;
+  }
+
+  .delete-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .delete-modal-actions .button {
+    width: 100%;
+  }
+
+}

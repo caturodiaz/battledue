@@ -29,6 +29,7 @@ function ProfilesPage() {
     characters,
     createCharacter,
     editCharacter,
+    removeCharacter,
     isLoading,
     error,
   } = useCharacters()
@@ -37,6 +38,10 @@ function ProfilesPage() {
   const [notice, setNotice] = useState('')
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] =
+    useState(false)
+  const [isDeleting, setIsDeleting] =
+    useState(false)
 
   /*
    * ========================================
@@ -87,6 +92,72 @@ function ProfilesPage() {
   const closeEditor = () => {
     setIsEditorOpen(false)
     setIsCreating(false)
+  }
+  const openDeleteModal = () => {
+  if (!character) {
+    return
+  }
+
+  setNotice('')
+  setIsDeleteModalOpen(true)
+}
+
+  const closeDeleteModal = () => {
+    if (isDeleting) {
+      return
+    }
+
+    setIsDeleteModalOpen(false)
+  }
+
+  const handleDelete = async () => {
+    if (!character || isDeleting) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      setNotice('')
+
+      const updatedCharacters =
+        await removeCharacter(
+          character.id
+        )
+
+      setIsDeleteModalOpen(false)
+
+      if (
+        updatedCharacters?.length > 0
+      ) {
+        const nextCharacter =
+          updatedCharacters.find(
+            (item) =>
+              item.id !== character.id
+          ) ||
+          updatedCharacters[0]
+
+        setSelectedId(
+          nextCharacter.id
+        )
+      } else {
+        setSelectedId('')
+      }
+
+      setNotice(
+        'Personaje eliminado correctamente.'
+      )
+    } catch (deleteError) {
+      console.error(
+        'Error eliminando personaje:',
+        deleteError
+      )
+
+      setNotice(
+        'No se pudo eliminar el personaje.'
+      )
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   /*
@@ -453,15 +524,28 @@ function ProfilesPage() {
 
               </div>
 
-              <button
-                className="button"
-                type="button"
-                onClick={
-                  openEditModal
-                }
-              >
-                Editar personaje
-              </button>
+              <div className="character-profile-actions">
+
+                <button
+                  className="button"
+                  type="button"
+                  onClick={
+                    openEditModal
+                  }
+                >
+                  Editar personaje
+                </button>
+
+                <button
+                  className="button danger"
+                  type="button"
+                  onClick={
+                    openDeleteModal}
+                >
+                  Eliminar personaje
+                </button>
+
+              </div>
 
             </div>
 
@@ -549,6 +633,85 @@ function ProfilesPage() {
 
         </div>
       )}
+
+      {isDeleteModalOpen && character && (
+          <div
+            className="delete-modal-backdrop"
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                closeDeleteModal()
+              }
+            }}
+          >
+
+            <div
+              className="delete-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-modal-title"
+            >
+
+              <div className="delete-modal-icon">
+                !
+              </div>
+
+              <p className="eyebrow">
+                Acción irreversible
+              </p>
+
+              <h2 id="delete-modal-title">
+                ¿Eliminar personaje?
+              </h2>
+
+              <p>
+                Estás a punto de eliminar a{' '}
+                <strong>
+                  {character.name}
+                </strong>
+                .
+              </p>
+
+              <p>
+                Se eliminarán también sus
+                habilidades, imágenes, atributos
+                y demás información del perfil.
+              </p>
+
+              <div className="delete-modal-actions">
+
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={
+                    closeDeleteModal
+                  }
+                  disabled={isDeleting}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  className="button danger"
+                  type="button"
+                  onClick={
+                    handleDelete
+                  }
+                  disabled={isDeleting}
+                >
+                  {isDeleting
+                    ? 'Eliminando...'
+                    : 'Sí, eliminar personaje'}
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
 
     </section>
   )

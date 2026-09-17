@@ -106,6 +106,12 @@ function ProfileEditor({
 
   const [error, setError] = useState('')
 
+  /*
+   * ========================================
+   * VISIBILIDAD DE IMÁGENES
+   * ========================================
+   */
+
   const [
     showPrimaryImageInput,
     setShowPrimaryImageInput,
@@ -162,7 +168,7 @@ function ProfileEditor({
 
   /*
    * ========================================
-   * GALERÍA
+   * GALERÍA DE VISTAS
    * ========================================
    */
 
@@ -443,6 +449,7 @@ function ProfileEditor({
       <div className="profile-editor-header">
 
         <div>
+
           <p className="eyebrow">
             BattleDue
           </p>
@@ -457,6 +464,7 @@ function ProfileEditor({
             {characterData.name ||
               'Nuevo personaje'}
           </p>
+
         </div>
 
         {onCancel && (
@@ -481,6 +489,7 @@ function ProfileEditor({
         <div className="profile-editor-section-header">
 
           <div>
+
             <p className="eyebrow">
               Identidad
             </p>
@@ -488,6 +497,7 @@ function ProfileEditor({
             <h3>
               Datos del personaje
             </h3>
+
           </div>
 
         </div>
@@ -495,6 +505,7 @@ function ProfileEditor({
         <div className="profile-editor-grid">
 
           <label className="field full-width">
+
             Nombre del personaje
 
             <input
@@ -511,9 +522,11 @@ function ProfileEditor({
               placeholder="Ej. Kizaru"
               autoFocus={!character.id}
             />
+
           </label>
 
           <label className="field">
+
             Edad
 
             <div className="field-with-suffix">
@@ -538,9 +551,11 @@ function ProfileEditor({
               </span>
 
             </div>
+
           </label>
 
           <label className="field">
+
             Género
 
             <input
@@ -556,9 +571,11 @@ function ProfileEditor({
               }
               placeholder="Ej. Masculino"
             />
+
           </label>
 
           <label className="field">
+
             Especie
 
             <input
@@ -574,9 +591,11 @@ function ProfileEditor({
               }
               placeholder="Ej. Humano"
             />
+
           </label>
 
           <label className="field">
+
             Afiliación
 
             <input
@@ -592,9 +611,11 @@ function ProfileEditor({
               }
               placeholder="Ej. Marina"
             />
+
           </label>
 
           <label className="field">
+
             Poder
 
             <input
@@ -610,9 +631,11 @@ function ProfileEditor({
               }
               placeholder="Ej. Pika Pika no Mi"
             />
+
           </label>
 
           <label className="field">
+
             Arma
 
             <input
@@ -628,6 +651,7 @@ function ProfileEditor({
               }
               placeholder="Ej. Espada"
             />
+
           </label>
 
         </div>
@@ -643,6 +667,7 @@ function ProfileEditor({
         <div className="profile-editor-section-header">
 
           <div>
+
             <p className="eyebrow">
               Presentación
             </p>
@@ -650,6 +675,7 @@ function ProfileEditor({
             <h3>
               Perfil del personaje
             </h3>
+
           </div>
 
         </div>
@@ -657,6 +683,7 @@ function ProfileEditor({
         <div className="profile-editor-grid">
 
           <label className="field">
+
             Título de combate
 
             <input
@@ -671,9 +698,11 @@ function ProfileEditor({
               }
               placeholder="Ej. El Almirante de la Luz"
             />
+
           </label>
 
           <label className="field">
+
             Frase distintiva
 
             <input
@@ -688,9 +717,11 @@ function ProfileEditor({
               }
               placeholder="Una frase característica"
             />
+
           </label>
 
           <label className="field">
+
             Color de acento
 
             <input
@@ -706,6 +737,7 @@ function ProfileEditor({
                 )
               }
             />
+
           </label>
 
           {/* ========================================
@@ -775,7 +807,109 @@ function ProfileEditor({
 
           </div>
 
+          {/* ========================================
+              GALERÍA DE VISTAS
+              ======================================== */}
+
+          <div className="image-url-editor full-width">
+
+            <div className="image-url-editor-header">
+
+              <div>
+
+                <label className="field-label">
+                  Galería de vistas
+                </label>
+
+                <p className="section-description">
+                  Agrega las imágenes una por una.
+                </p>
+
+              </div>
+
+              <button
+                className="button secondary small"
+                type="button"
+                onClick={
+                  addGalleryImage
+                }
+              >
+                + Agregar imagen
+              </button>
+
+            </div>
+
+            {profile.galleryImages.length ===
+            0 ? (
+              <p className="profile-editor-empty">
+                Todavía no hay imágenes.
+                Agrega una URL de ImgBB o
+                cualquier otro hosting.
+              </p>
+            ) : (
+              <div className="gallery-editor-list">
+
+                {profile.galleryImages.map(
+                  (image, index) => (
+                    <div
+                      className="image-url-editor-item"
+                      key={image.id}
+                    >
+
+                      <div className="image-url-editor-item-header">
+
+                        <span>
+                          Vista{' '}
+                          {String(
+                            index + 1
+                          ).padStart(
+                            2,
+                            '0'
+                          )}
+                        </span>
+
+                        <button
+                          className="remove-image-button"
+                          type="button"
+                          onClick={() =>
+                            removeGalleryImage(
+                              image.id
+                            )
+                          }
+                          aria-label={`Eliminar vista ${
+                            index + 1
+                          }`}
+                        >
+                          ×
+                        </button>
+
+                      </div>
+
+                      <input
+                        type="url"
+                        value={
+                          image.url
+                        }
+                        onChange={(event) =>
+                          updateGalleryImage(
+                            image.id,
+                            event.target.value
+                          )
+                        }
+                        placeholder="https://i.ibb.co/..."
+                      />
+
+                    </div>
+                  )
+                )}
+
+              </div>
+            )}
+
+          </div>
+
           <label className="field full-width">
+
             Biografía
 
             <textarea
@@ -790,6 +924,7 @@ function ProfileEditor({
               }
               placeholder="Historia, personalidad o trasfondo..."
             />
+
           </label>
 
         </div>
@@ -805,6 +940,7 @@ function ProfileEditor({
         <div className="abilities-editor-header">
 
           <div>
+
             <p className="eyebrow">
               Perfil de combate
             </p>
@@ -817,6 +953,7 @@ function ProfileEditor({
               Define las habilidades
               especiales del personaje.
             </p>
+
           </div>
 
           <button
@@ -955,6 +1092,7 @@ function ProfileEditor({
             <label
               key={key}
             >
+
               <span>
                 {label}
               </span>
@@ -993,6 +1131,7 @@ function ProfileEditor({
                 }
                 /6
               </b>
+
             </label>
           )
         )}
@@ -1008,6 +1147,7 @@ function ProfileEditor({
         <div className="ultimate-editor-header">
 
           <div>
+
             <p className="eyebrow">
               Técnica especial
             </p>
@@ -1015,6 +1155,7 @@ function ProfileEditor({
             <h3>
               Técnica definitiva
             </h3>
+
           </div>
 
         </div>
@@ -1022,6 +1163,7 @@ function ProfileEditor({
         <div className="profile-editor-grid">
 
           <label className="field">
+
             Nombre de la técnica
 
             <input
@@ -1036,6 +1178,7 @@ function ProfileEditor({
               }
               placeholder="Nombre de la técnica"
             />
+
           </label>
 
           {/* ========================================
