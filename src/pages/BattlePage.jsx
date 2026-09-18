@@ -1,5 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCharacters } from '../hooks/useCharacters'
+import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
+import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
+import {
+  applyBattleState,
+  consumeEvasion,
+  decrementBattleStates,
+  getBattleStateInfo,
+  processBattleAttack,
+  processBattleStateStartOfTurn,
+} from '../battle/ai/battleStates'
+import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
 
 const BASE_HP = 100
 const MAX_ENERGY = 100
@@ -161,6 +172,7 @@ function BattleCharacterCard({
   energyPulse,
   isDefeated,
   isVictorious,
+  states = [],
 }) {
   const image =
     getCharacterImage(character)
@@ -275,6 +287,22 @@ function BattleCharacterCard({
         </div>
       </div>
 
+      {states.length > 0 && (
+        <div className="battle-status-list">
+          {getBattleStateInfo(states).map((state) => (
+            <span
+              className={`battle-status battle-status-${state.type}`}
+              key={state.type}
+              title={state.name}
+            >
+              {state.icon} {state.name}
+              {state.stacks > 1 ? ` x${state.stacks}` : ''}
+              {state.turns ? ` · ${state.turns}` : ''}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="battle-character-image">
         {isActive && (
           <div className="battle-turn-badge">
@@ -313,6 +341,9 @@ function BattlePage() {
   const [characterBId, setCharacterBId] =
     useState('')
 
+  const playerId = characterAId
+  const enemyId = characterBId
+
   const [battleStarted, setBattleStarted] =
     useState(false)
 
@@ -331,6 +362,9 @@ function BattlePage() {
   const [defending, setDefending] =
     useState({})
 
+  const [battleStates, setBattleStates] =
+    useState({})
+
   const [battleLog, setBattleLog] =
     useState([])
 
@@ -341,6 +375,9 @@ function BattlePage() {
     useState(false)
 
   const [isProcessingTurn, setIsProcessingTurn] =
+    useState(false)
+
+  const [isEnemyThinking, setIsEnemyThinking] =
     useState(false)
 
   const [selectedAction, setSelectedAction] =
@@ -360,6 +397,9 @@ function BattlePage() {
 
   const [ultimateAnimation, setUltimateAnimation] =
     useState(null)
+
+  const performActionRef = useRef(null)
+  const processedTurnRef = useRef(null)
 
   const characterA = useMemo(
     () =>
@@ -560,6 +600,11 @@ function BattlePage() {
       [characterB.id]: false,
     })
 
+    setBattleStates({
+      [characterA.id]: [],
+      [characterB.id]: [],
+    })
+
     setTurn(1)
 
     setCurrentAttackerId(
@@ -585,8 +630,10 @@ function BattlePage() {
     setWinnerId('')
     setIsBattleFinished(false)
     setIsProcessingTurn(false)
+    setIsEnemyThinking(false)
     setSelectedAction('basic')
     setUltimateAnimation(null)
+    processedTurnRef.current = null
     setBattleStarted(true)
   }
 
@@ -597,16 +644,19 @@ function BattlePage() {
     setHp({})
     setEnergy({})
     setDefending({})
+    setBattleStates({})
     setBattleLog([])
     setWinnerId('')
     setIsBattleFinished(false)
     setIsProcessingTurn(false)
+    setIsEnemyThinking(false)
     setSelectedAction('basic')
     setBattleNotification(null)
     setUltimateAnimation(null)
+    processedTurnRef.current = null
   }
 
-  async function performAction() {
+  async function performAction(actionOverride = null) {
     if (
       !battleStarted ||
       isBattleFinished ||
@@ -618,7 +668,99 @@ function BattlePage() {
     }
 
     const action =
-      selectedAction
+      actionOverride || selectedAction
+
+    if (typeof action !== 'string') {
+      console.error('⚠️ Acción inválida:', action)
+      return
+    }
+
+    /*
+     * =========================================
+     * PROCESAR ESTADOS AL INICIO DEL TURNO
+     * =========================================
+     */
+
+    const turnStateKey = `${turn}-${currentAttacker.id}`
+
+    if (processedTurnRef.current !== turnStateKey) {
+      processedTurnRef.current = turnStateKey
+
+      const attackerStates =
+        battleStates[currentAttacker.id] || []
+
+      const startOfTurnResult =
+        processBattleStateStartOfTurn(
+          attackerStates,
+          getMaxHp(currentAttacker)
+        )
+
+      if (startOfTurnResult.hpChange !== 0) {
+        const currentHp = hp[currentAttacker.id] || 0
+        const newHp = Math.max(
+          0,
+          currentHp + startOfTurnResult.hpChange
+        )
+
+        setHp((previousHp) => ({
+          ...previousHp,
+          [currentAttacker.id]: newHp,
+        }))
+
+        if (startOfTurnResult.hpChange < 0) {
+          setHpFlash((previous) => ({
+            ...previous,
+            [currentAttacker.id]: true,
+          }))
+
+          setTimeout(() => {
+            setHpFlash((previous) => ({
+              ...previous,
+              [currentAttacker.id]: false,
+            }))
+          }, 500)
+        }
+      }
+
+      startOfTurnResult.messages.forEach((message) => {
+        addLog(
+          message.text,
+          'status',
+          {
+            icon: message.type === 'bleeding' ? '🩸' : '⚠️',
+            title: '¡ESTADO!',
+            text: message.text,
+            type: 'status',
+          }
+        )
+      })
+
+      const currentHpAfterState =
+        Math.max(
+          0,
+          (hp[currentAttacker.id] || 0) +
+            startOfTurnResult.hpChange
+        )
+
+      if (currentHpAfterState <= 0) {
+        setWinnerId(currentDefender.id)
+        setIsBattleFinished(true)
+        setIsProcessingTurn(false)
+
+        addLog(
+          `🏆 ¡${currentDefender.name} gana el combate! ${currentAttacker.name} cayó por efecto de estado.`,
+          'winner',
+          {
+            icon: '🏆',
+            title: '¡COMBATE TERMINADO!',
+            text: `${currentDefender.name} es el ganador`,
+            type: 'winner',
+          }
+        )
+
+        return
+      }
+    }
 
     /*
      * DEFENDER
@@ -679,6 +821,18 @@ function BattlePage() {
         }
       )
 
+      setBattleStates((previous) => {
+        const nextStates = {}
+
+        Object.keys(previous).forEach((id) => {
+          nextStates[id] = decrementBattleStates(
+            previous[id] || []
+          )
+        })
+
+        return nextStates
+      })
+
       setCurrentAttackerId(
         currentDefender.id
       )
@@ -709,6 +863,8 @@ function BattlePage() {
     let criticalBonus = 0
 
     let actionType = 'attack'
+    let selectedAbility = null
+    let abilityBattleEffect = null
 
     if (
       action === 'ultimate'
@@ -757,6 +913,10 @@ function BattlePage() {
         return
       }
 
+      selectedAbility = ability
+      abilityBattleEffect =
+        getAbilityBattleEffect(ability)
+
       actionName =
         ability.name ||
         'Habilidad'
@@ -800,7 +960,13 @@ function BattlePage() {
       setUltimateAnimation(null)
     }
 
-    const result =
+    const attackerStates =
+      battleStates[currentAttacker.id] || []
+
+    const defenderStates =
+      battleStates[currentDefender.id] || []
+
+    const baseResult =
       calculateAttack({
         attacker:
           currentAttacker,
@@ -811,7 +977,33 @@ function BattlePage() {
         criticalBonus,
       })
 
-      setCombatEffect(
+    const stateResult =
+      processBattleAttack({
+        attackerStates,
+        defenderStates,
+        damage: baseResult.damage,
+      })
+
+    const result = {
+      ...baseResult,
+      damage: stateResult.damage,
+      type: stateResult.hit
+        ? baseResult.type
+        : 'miss',
+      stateReason: stateResult.reason,
+      stateMessage: stateResult.message,
+    }
+
+    if (stateResult.consumeEvasion) {
+      setBattleStates((previous) => ({
+        ...previous,
+        [currentDefender.id]: consumeEvasion(
+          previous[currentDefender.id] || []
+        ),
+      }))
+    }
+
+    setCombatEffect(
         result.type
         )
 
@@ -851,8 +1043,12 @@ function BattlePage() {
     if (
       result.type === 'miss'
     ) {
+      const stateMessage =
+        result.stateMessage
+
       addLog(
-        `💨 ${currentDefender.name} esquiva ${actionName} de ${currentAttacker.name}.`,
+        stateMessage ||
+          `💨 ${currentDefender.name} esquiva ${actionName} de ${currentAttacker.name}.`,
         'miss',
         {
           icon: '💨',
@@ -988,6 +1184,54 @@ function BattlePage() {
         finalDamage
     }
 
+    setBattleStates((previous) => {
+      const nextStates = {}
+
+      Object.keys(previous).forEach((id) => {
+        nextStates[id] = decrementBattleStates(
+          previous[id] || []
+        )
+      })
+
+      if (
+        abilityBattleEffect &&
+        result.type !== 'miss'
+      ) {
+        const effect = abilityBattleEffect
+        const targetId =
+          effect.target === 'self'
+            ? currentAttacker.id
+            : currentDefender.id
+
+        nextStates[targetId] = applyBattleState(
+          nextStates[targetId] || [],
+          effect.type,
+          effect.data || {}
+        )
+
+        const effectInfo = getBattleStateInfo([
+          {
+            type: effect.type,
+            turns: effect.data?.turns,
+            stacks: effect.data?.stacks || 1,
+          },
+        ])[0]
+
+        addLog(
+          `${effectInfo?.icon || '✨'} ${effectInfo?.name || effect.type} aplicado a ${targetId === currentAttacker.id ? currentAttacker.name : currentDefender.name}.`,
+          'status',
+          {
+            icon: effectInfo?.icon || '✨',
+            title: `¡${(effectInfo?.name || effect.type).toUpperCase()}!`,
+            text: `${targetId === currentAttacker.id ? currentAttacker.name : currentDefender.name} ahora tiene ${effectInfo?.name || effect.type}.`,
+            type: 'status',
+          }
+        )
+      }
+
+      return nextStates
+    })
+
     if (
       result.damage > 0
     ) {
@@ -1076,6 +1320,93 @@ function BattlePage() {
       )
     }, 350)
   }
+
+
+  performActionRef.current = performAction
+
+  useEffect(() => {
+    if (
+      !battleStarted ||
+      isBattleFinished ||
+      isProcessingTurn ||
+      !currentAttacker ||
+      !currentDefender
+    ) {
+      return
+    }
+
+    if (currentAttacker.id !== enemyId) {
+      return
+    }
+
+    const enemyAbilities =
+      getAbilities(currentAttacker)
+
+    const enemyAction =
+      chooseEnemyAction({
+        attacker: currentAttacker,
+        defender: currentDefender,
+        attackerHp:
+          hp[currentAttacker.id] || 0,
+        defenderHp:
+          hp[currentDefender.id] || 0,
+        attackerMaxHp:
+          getMaxHp(currentAttacker),
+        defenderMaxHp:
+          getMaxHp(currentDefender),
+        attackerEnergy:
+          energy[currentAttacker.id] || 0,
+        defenderEnergy:
+          energy[currentDefender.id] || 0,
+        abilities: enemyAbilities,
+      })
+
+    const actionForBattle =
+      enemyAction.type === 'ability'
+        ? `ability-${enemyAction.abilityIndex}`
+        : enemyAction.type
+
+    console.log(
+      '🤖 IA decidió:',
+      enemyAction,
+      '→',
+      actionForBattle
+    )
+
+    const cleanup =
+      executeEnemyTurn({
+        action: actionForBattle,
+        delay: 1000,
+
+        onThinkingStart: () => {
+          setIsEnemyThinking(true)
+
+          setBattleNotification({
+            id: crypto.randomUUID(),
+            icon: '🤖',
+            title: '¡TURNO DEL RIVAL!',
+            text: `${currentAttacker.name} está pensando...`,
+            type: 'system',
+          })
+        },
+
+        onExecute: (action) => {
+          setIsEnemyThinking(false)
+          performActionRef.current?.(action)
+        },
+      })
+
+    return cleanup
+  }, [
+    battleStarted,
+    isBattleFinished,
+    isProcessingTurn,
+    currentAttacker,
+    currentDefender,
+    enemyId,
+    hp,
+    energy,
+  ])
 
   if (
     characters.length < 2
@@ -1314,7 +1645,7 @@ function BattlePage() {
             )}
           </div>
 
-          <div className="battle-fighters battle-fighters-ultimate">
+          <div className="battle-fighters">
             <BattleCharacterCard
               character={
                 characterA
@@ -1360,6 +1691,7 @@ function BattlePage() {
                 isVictorious={
                 winnerId === characterA.id
                 }
+                states={battleStates[characterA.id] || []}
             />
 
             <div className="battle-vs">
@@ -1411,6 +1743,7 @@ function BattlePage() {
                 isVictorious={
                 winnerId === characterB.id
                 }
+                states={battleStates[characterB.id] || []}
             />
           </div>
 
@@ -1427,6 +1760,12 @@ function BattlePage() {
                 }
               </p>
 
+              {isEnemyThinking && (
+                <div className="battle-enemy-thinking">
+                  🤖 {currentAttacker?.name} está pensando...
+                </div>
+              )}
+
               <div className="battle-actions">
                 <button
                   className={
@@ -1436,6 +1775,7 @@ function BattlePage() {
                       : 'battle-action'
                   }
                   type="button"
+                  disabled={isEnemyThinking}
                   onClick={() =>
                     setSelectedAction(
                       'basic'
@@ -1516,6 +1856,7 @@ function BattlePage() {
                   }`}
                   type="button"
                   disabled={
+                    isEnemyThinking ||
                     currentEnergy <
                     100
                   }
@@ -1574,6 +1915,7 @@ function BattlePage() {
                 type="button"
                 disabled={
                   isProcessingTurn ||
+                  isEnemyThinking ||
                   (
                     selectedAction ===
                       'ultimate' &&
@@ -1588,8 +1930,8 @@ function BattlePage() {
                       25
                   )
                 }
-                onClick={
-                  performAction
+                onClick={() =>
+                  performAction()
                 }
               >
                 {isProcessingTurn

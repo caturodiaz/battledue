@@ -344,9 +344,6 @@ function ProfileEditor({
     const cleanedProfile = {
       ...profile,
 
-      title:
-        profile.title?.trim() || '',
-
       tagline:
         profile.tagline?.trim() || '',
 
@@ -681,25 +678,6 @@ function ProfileEditor({
         </div>
 
         <div className="profile-editor-grid">
-
-          <label className="field">
-
-            Título de combate
-
-            <input
-              value={
-                profile.title
-              }
-              onChange={(event) =>
-                updateProfile(
-                  'title',
-                  event.target.value
-                )
-              }
-              placeholder="Ej. El Almirante de la Luz"
-            />
-
-          </label>
 
           <label className="field">
 
