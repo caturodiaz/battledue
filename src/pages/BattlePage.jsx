@@ -15,6 +15,7 @@ import {
   playAttackSound,
   playEnergyReadySound,
   playVictorySound,
+  playDodgeSound,
 } from '../battle/audio/battleSounds'
 
 const BASE_HP = 100
@@ -1081,6 +1082,8 @@ function BattlePage() {
     if (
       result.type === 'miss'
     ) {
+
+      playDodgeSound()
       const stateMessage =
         result.stateMessage
 
