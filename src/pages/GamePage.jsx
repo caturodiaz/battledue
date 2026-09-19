@@ -153,6 +153,33 @@ function GamePage({ onCharacters }) {
     )
   }
 
+  function getAgeHint(character) {
+    const guessAge = Number(
+      character?.age
+    )
+
+    const targetAge = Number(
+      target?.age
+    )
+
+    if (
+      !Number.isFinite(guessAge) ||
+      !Number.isFinite(targetAge)
+    ) {
+      return null
+    }
+
+    if (guessAge === targetAge) {
+      return null
+    }
+
+    if (guessAge < targetAge) {
+      return '↑'
+    }
+
+    return '↓'
+  }
+
   if (characters.length < 2) {
     return (
       <section className="game-page">
@@ -490,12 +517,26 @@ function GamePage({ onCharacters }) {
                             key={key}
                             style={{
                               '--reveal-delay': `${
-                                (index +
-                                  1) *
-                                180
+                                (index + 1) * 180
                               }ms`,
                             }}
                           >
+                          {key === 'age' && !match && (
+                            <span
+                              className={`age-hint ${
+                                getAgeHint(guess) === '↑'
+                                  ? 'age-hint-up'
+                                  : 'age-hint-down'
+                              }`}
+                            >
+                              <span className="age-hint-arrow">
+                                {getAgeHint(guess) === '↑'
+                                  ? '▲'
+                                  : '▼'}
+                              </span>
+                            </span>
+                          )}
+
                             {formatFieldValue(
                               guess,
                               key
