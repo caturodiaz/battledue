@@ -353,6 +353,9 @@ function BattlePage() {
   const [currentAttackerId, setCurrentAttackerId] =
     useState('')
 
+  const isPlayerTurn =
+    currentAttackerId === playerId
+
   const [hp, setHp] =
     useState({})
 
@@ -1748,10 +1751,14 @@ function BattlePage() {
           </div>
 
           {!isBattleFinished && (
-            <div
-              className="battle-action-panel"
-              key={currentAttackerId}
-            >
+              <div
+                  className={`battle-action-panel ${
+                    !isPlayerTurn
+                      ? 'is-opponent-turn'
+                      : ''
+                  }`}
+                  key={currentAttackerId}
+                >
               <p className="eyebrow">
                 Acciones de{' '}
                 {
@@ -1775,7 +1782,7 @@ function BattlePage() {
                       : 'battle-action'
                   }
                   type="button"
-                  disabled={isEnemyThinking}
+                  disabled={!isPlayerTurn || isEnemyThinking}
                   onClick={() =>
                     setSelectedAction(
                       'basic'
@@ -1800,8 +1807,8 @@ function BattlePage() {
                       `ability-${index}`
 
                     const disabled =
-                      currentEnergy <
-                      25
+                      !isPlayerTurn ||
+                      currentEnergy < 25
 
                     return (
                       <button
@@ -1856,9 +1863,9 @@ function BattlePage() {
                   }`}
                   type="button"
                   disabled={
+                    !isPlayerTurn ||
                     isEnemyThinking ||
-                    currentEnergy <
-                    100
+                    currentEnergy < 100
                   }
                   onClick={() =>
                     setSelectedAction(
@@ -1894,6 +1901,7 @@ function BattlePage() {
                       : 'battle-action battle-action-defend'
                   }
                   type="button"
+                  disabled={!isPlayerTurn || isEnemyThinking}
                   onClick={() =>
                     setSelectedAction(
                       'defend'
