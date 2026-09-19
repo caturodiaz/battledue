@@ -1,0 +1,107 @@
+name: Backup characters
+
+on:
+  schedule:
+    # Every day at 03:00 UTC.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch characters from Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+
+          mkdir -p backup-data
+
+          curl --fail --silent --show-error \
+            --retry 3 \
+            --retry-delay 2 \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/characters?select=*&order=created_at.asc" \
+            -o backup-data/characters.json
+
+      - name: Validate backup
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('backup-data/characters.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+
+          if not isinstance(data, list):
+              raise SystemExit('Supabase response is not a JSON array')
+
+          if any(not isinstance(character, dict) for character in data):
+              raise SystemExit('Backup contains an invalid character entry')
+
+          print(f'Backup validated: {len(data)} characters')
+          PY
+
+      - name: Store dated backup
+        run: |
+          set -euo pipefail
+
+          BACKUP_DATE="$(date -u +'%Y-%m-%d')"
+          BACKUP_DIR="backups/$BACKUP_DATE"
+          mkdir -p "$BACKUP_DIR"
+          cp backup-data/characters.json "$BACKUP_DIR/characters.json"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          data_path = Path('backup-data/characters.json')
+          data = json.loads(data_path.read_text(encoding='utf-8'))
+
+          metadata = {
+              'backupDate': datetime.now(timezone.utc).isoformat(),
+              'table': 'public.characters',
+              'count': len(data),
+              'charactersFile': 'characters.json',
+          }
+
+          backup_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+          metadata_path = Path(f'backups/{backup_date}/metadata.json')
+          metadata_path.write_text(
+              json.dumps(metadata, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Commit backup
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add backups/
+
+          if git diff --cached --quiet; then
+            echo "No backup changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore: backup characters $(date -u +'%Y-%m-%d')"
+          git push
