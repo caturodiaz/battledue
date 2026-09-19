@@ -4,7 +4,8 @@ import GamePage from './pages/GamePage'
 import ProfilesPage from './pages/ProfilesPage'
 import BattlePage from './pages/BattlePage'
 import './App.css'
-import './battle/BattleEvasion.css'
+import './styles/BattleEvasion.css'
+import './styles/BattleHealing.css'
 
 function App() {
   const [page, setPage] = useState('home')

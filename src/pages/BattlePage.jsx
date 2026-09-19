@@ -17,6 +17,7 @@ import {
   playVictorySound,
   playDodgeSound,
   playLostBattleSound,
+  playFullHealingSound,
 } from '../battle/audio/battleSounds'
 
 const BASE_HP = 100
@@ -179,6 +180,7 @@ function BattleCharacterCard({
   energyPulse,
   isDefeated,
   isVictorious,
+  healingCharacterId,
   states = [],
 }) {
   const image =
@@ -224,7 +226,9 @@ function BattleCharacterCard({
         isVictorious
         ? 'is-victorious'
         : ''
-    }`}
+    } ${healingCharacterId === character.id 
+      ? 'is-healing' 
+      : ''}`}
     >
       <div className="battle-character-heading">
         <div>
@@ -311,6 +315,21 @@ function BattleCharacterCard({
       )}
 
       <div className="battle-character-image">
+        {healingCharacterId === character.id && (
+          <div className="battle-healing-banner">
+            <span className="battle-healing-icon">
+              💚
+            </span>
+
+            <span className="battle-healing-title">
+              CURACIÓN SÚPER
+            </span>
+
+            <span className="battle-healing-subtitle">
+              ¡VIDA RESTAURADA!
+            </span>
+          </div>
+        )}
         {isActive && (
           <div className="battle-turn-badge">
             ⚔️ ¡TU TURNO!
@@ -396,14 +415,17 @@ function BattlePage() {
   const [battleNotification, setBattleNotification] =
     useState(null)
 
-    const [combatEffect, setCombatEffect] =
-    useState(null)
+  const [combatEffect, setCombatEffect] =
+  useState(null)
 
-    const [hpFlash, setHpFlash] =
-    useState({})
+  const [hpFlash, setHpFlash] =
+  useState({})
 
-    const [energyPulse, setEnergyPulse] =
-    useState({})
+  const [energyPulse, setEnergyPulse] =
+  useState({})
+
+  const [healingCharacterId, setHealingCharacterId] =
+    useState('')
 
   const [ultimateAnimation, setUltimateAnimation] =
     useState(null)
@@ -893,6 +915,7 @@ function BattlePage() {
     let actionType = 'attack'
     let selectedAbility = null
     let abilityBattleEffect = null
+    let ultimateBattleEffect = null
 
     if (
       action === 'ultimate'
@@ -909,7 +932,16 @@ function BattlePage() {
           ?.ultimateName ||
         'Técnica definitiva'
 
-      multiplier = 3
+      ultimateBattleEffect =
+        currentAttacker
+          .profile
+          ?.ultimateBattleEffect ||
+        null
+
+      multiplier =
+        ultimateBattleEffect?.type === 'full_heal_self'
+          ? 0
+          : 3
 
       energyCost = 100
 
@@ -1233,53 +1265,159 @@ function BattlePage() {
         finalDamage
     }
 
-    setBattleStates((previous) => {
-      const nextStates = {}
+setBattleStates((previous) => {
+  const nextStates = {}
 
-      Object.keys(previous).forEach((id) => {
-        nextStates[id] = decrementBattleStates(
-          previous[id] || []
-        )
-      })
+  Object.keys(previous).forEach((id) => {
+    nextStates[id] = decrementBattleStates(
+      previous[id] || []
+    )
+  })
 
-      if (
-        abilityBattleEffect &&
-        result.type !== 'miss'
-      ) {
-        const effect = abilityBattleEffect
-        const targetId =
-          effect.target === 'self'
-            ? currentAttacker.id
-            : currentDefender.id
+  if (
+    abilityBattleEffect &&
+    result.type !== 'miss'
+  ) {
+    const effect = abilityBattleEffect
 
-        nextStates[targetId] = applyBattleState(
-          nextStates[targetId] || [],
-          effect.type,
-          effect.data || {}
-        )
+    // =========================================
+    // EFECTOS DE CURACIÓN
+    // =========================================
 
-        const effectInfo = getBattleStateInfo([
-          {
-            type: effect.type,
-            turns: effect.data?.turns,
-            stacks: effect.data?.stacks || 1,
-          },
-        ])[0]
+    if (effect.type === 'heal_self') {
+      const maxHp =
+        getMaxHp(currentAttacker)
 
-        addLog(
-          `${effectInfo?.icon || '✨'} ${effectInfo?.name || effect.type} aplicado a ${targetId === currentAttacker.id ? currentAttacker.name : currentDefender.name}.`,
-          'status',
-          {
-            icon: effectInfo?.icon || '✨',
-            title: `¡${(effectInfo?.name || effect.type).toUpperCase()}!`,
-            text: `${targetId === currentAttacker.id ? currentAttacker.name : currentDefender.name} ahora tiene ${effectInfo?.name || effect.type}.`,
-            type: 'status',
-          }
-        )
-      }
+      const currentHp =
+        hp[currentAttacker.id] || 0
+
+      const healAmount = Math.round(
+        maxHp *
+          Number(
+            effect.data?.amount || 0
+          )
+      )
+
+      const newHp = Math.min(
+        maxHp,
+        currentHp + healAmount
+      )
+
+      setHp((previousHp) => ({
+        ...previousHp,
+        [currentAttacker.id]:
+          newHp,
+      }))
+
+      addLog(
+        `💚 ${currentAttacker.name} recupera ${healAmount} HP con ${actionName}.`,
+        'heal',
+        {
+          icon: '💚',
+          title: '¡CURACIÓN!',
+          text: `${currentAttacker.name} recuperó ${healAmount} HP.`,
+          type: 'heal',
+        }
+      )
 
       return nextStates
-    })
+    }
+
+    // =========================================
+    // EFECTOS DE ESTADO
+    // =========================================
+
+    const targetId =
+      effect.target === 'self'
+        ? currentAttacker.id
+        : currentDefender.id
+
+    nextStates[targetId] =
+      applyBattleState(
+        nextStates[targetId] || [],
+        effect.type,
+        effect.data || {}
+      )
+
+    const effectInfo =
+      getBattleStateInfo([
+        {
+          type: effect.type,
+          turns: effect.data?.turns,
+          stacks:
+            effect.data?.stacks || 1,
+        },
+      ])[0]
+
+    addLog(
+      `${effectInfo?.icon || '✨'} ${effectInfo?.name || effect.type} aplicado a ${
+        targetId === currentAttacker.id
+          ? currentAttacker.name
+          : currentDefender.name
+      }.`,
+      'status',
+      {
+        icon:
+          effectInfo?.icon || '✨',
+        title: `¡${(
+          effectInfo?.name ||
+          effect.type
+        ).toUpperCase()}!`,
+        text: `${
+          targetId === currentAttacker.id
+            ? currentAttacker.name
+            : currentDefender.name
+        } ahora tiene ${
+          effectInfo?.name ||
+          effect.type
+        }.`,
+        type: 'status',
+      }
+    )
+  }
+
+  return nextStates
+})
+
+  // =========================================
+  // EFECTO DE DEFINITIVA
+  // =========================================
+
+  if (
+    ultimateBattleEffect?.type ===
+    'full_heal_self'
+  ) {
+    
+    const maxHp =
+      getMaxHp(currentAttacker)
+
+    setHp((previousHp) => ({
+      ...previousHp,
+      [currentAttacker.id]:
+        maxHp,
+    }))
+
+    setHealingCharacterId(
+      currentAttacker.id
+    )
+
+    setTimeout(() => {
+      setHealingCharacterId('')
+    }, 1800)
+
+    playFullHealingSound()
+
+    addLog(
+      `💚 ${currentAttacker.name} recupera toda su vida con ${actionName}.`,
+      'heal',
+      {
+        icon: '💚',
+        title: '¡CURACIÓN COMPLETA!',
+        text: `${currentAttacker.name} recuperó toda su vida.`,
+        type: 'heal',
+      }
+    )
+  }
 
     if (
       result.damage > 0
@@ -1731,19 +1869,22 @@ function BattlePage() {
                     ? combatEffect
                     : null
                 }
-                hpFlash={
+              hpFlash={
                 hpFlash[characterA.id] || false
-                }
-                energyPulse={
+              }
+              energyPulse={
                 energyPulse[characterA.id] || false
-                }
-                isDefeated={
+              }
+              isDefeated={
                 hp[characterA.id] <= 0
-                }
+              }
                 isVictorious={
-                winnerId === characterA.id
-                }
-                states={battleStates[characterA.id] || []}
+              winnerId === characterA.id
+              }
+              states={battleStates[characterA.id] || []}
+              healingCharacterId={
+                healingCharacterId
+              }
             />
 
             <div className="battle-vs">
@@ -1796,6 +1937,9 @@ function BattlePage() {
                 winnerId === characterB.id
                 }
                 states={battleStates[characterB.id] || []}
+                healingCharacterId={
+                  healingCharacterId
+                }
             />
           </div>
 

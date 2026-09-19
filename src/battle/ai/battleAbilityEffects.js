@@ -95,17 +95,28 @@ function getExplicitEffect(ability) {
     }
   }
 
-  if (
-    typeof explicit === 'object'
-  ) {
+  if (typeof explicit === 'object') {
+    const effectType =
+      explicit.type ||
+      explicit.status
+
+    if (
+      effectType === 'heal_self' ||
+      effectType === 'full_heal_self'
+    ) {
+      return {
+        type: effectType,
+        target: 'self',
+        data: {
+          ...explicit,
+        },
+      }
+    }
+
     const rule =
       STATUS_RULES.find(
         (item) =>
-          item.type ===
-          (
-            explicit.type ||
-            explicit.status
-          )
+          item.type === effectType
       )
 
     if (!rule) {
