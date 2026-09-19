@@ -551,25 +551,33 @@ function ProfileEditor({
 
           </label>
 
-          <label className="field">
+        <label className="field">
 
-            Género
+          Género
 
-            <input
-              type="text"
-              value={
-                characterData.gender
-              }
-              onChange={(event) =>
-                updateCharacter(
-                  'gender',
-                  event.target.value
-                )
-              }
-              placeholder="Ej. Masculino"
-            />
+          <select
+            value={characterData.gender}
+            onChange={(event) =>
+              updateCharacter(
+                'gender',
+                event.target.value
+              )
+            }
+          >
+            <option value="">
+              Seleccionar género
+            </option>
 
-          </label>
+            <option value="Masculino">
+              Masculino
+            </option>
+
+            <option value="Femenino">
+              Femenino
+            </option>
+          </select>
+
+        </label>
 
           <label className="field">
 
@@ -615,19 +623,35 @@ function ProfileEditor({
 
             Poder
 
-            <input
-              type="text"
-              value={
-                characterData.power
-              }
+            <select
+              value={characterData.power}
               onChange={(event) =>
                 updateCharacter(
                   'power',
                   event.target.value
                 )
               }
-              placeholder="Ej. Pika Pika no Mi"
-            />
+            >
+              <option value="">
+                Seleccionar tipo de poder
+              </option>
+
+              <option value="Elemental">
+                Elemental
+              </option>
+
+              <option value="Animal">
+                Animal
+              </option>
+
+              <option value="Mágico">
+                Mágico
+              </option>
+
+              <option value="Ninguno">
+                Ninguno
+              </option>
+            </select>
 
           </label>
 
