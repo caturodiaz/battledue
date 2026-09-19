@@ -51,6 +51,20 @@ const STATUS_RULES = [
       turns: 2,
     },
   },
+
+  {
+    type: 'heal_self',
+    target: 'self',
+    data: {
+      amount: 0,
+    },
+  },
+
+  {
+    type: 'full_heal_self',
+    target: 'self',
+    data: {},
+  },
 ]
 
 /*
@@ -58,7 +72,7 @@ const STATUS_RULES = [
  *
  * Ejemplo en Supabase:
  *
- * statusEffect: {
+ * battleEffect: {
  *   type: 'bleeding',
  *   target: 'enemy',
  *   turns: 3
