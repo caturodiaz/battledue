@@ -16,6 +16,7 @@ import {
   playEnergyReadySound,
   playVictorySound,
   playDodgeSound,
+  playLostBattleSound,
 } from '../battle/audio/battleSounds'
 
 const BASE_HP = 100
@@ -751,12 +752,19 @@ function BattlePage() {
             startOfTurnResult.hpChange
         )
 
-      if (currentHpAfterState <= 0) {
-        setWinnerId(currentDefender.id)
+        if (currentHpAfterState <= 0) {
+        const winnerId =
+          currentDefender.id
+
+        setWinnerId(winnerId)
+
+        if (winnerId === playerId) {
+          playVictorySound()
+        } else {
+          playLostBattleSound()
+        }
         setIsBattleFinished(true)
         setIsProcessingTurn(false)
-
-        playVictorySound()
 
         addLog(
           `🏆 ¡${currentDefender.name} gana el combate! ${currentAttacker.name} cayó por efecto de estado.`,
@@ -1313,19 +1321,20 @@ function BattlePage() {
             newHp,
         })
       )
+      if (newHp <= 0) {
+        const winnerId = currentAttacker.id
 
-      if (
-        newHp <= 0
-      ) {
-        setWinnerId(
-          currentAttacker.id
-        )
+        setWinnerId(winnerId)
 
         setIsBattleFinished(
           true
         )
 
-        playVictorySound()
+        if (winnerId === playerId) {
+          playVictorySound()
+        } else {
+          playLostBattleSound()
+        }
 
         addLog(
           `🏆 ¡${currentAttacker.name} gana el combate!`,

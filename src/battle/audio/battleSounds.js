@@ -4,6 +4,7 @@ import hitSound from '../../assets/sounds/golpe.mp3'
 import swordSound from '../../assets/sounds/sword.wav'
 import swordShieldSound from '../../assets/sounds/sword_with_shield.mp3'
 import swooshSound from '../../assets/sounds/swoosh.mp3'
+import lostBattleSound from '../../assets/sounds/lost-battle.mp3'
 
 const soundSources = {
   victory: victorySound,
@@ -12,6 +13,7 @@ const soundSources = {
   sword: swordSound,
   swordShield: swordShieldSound,
   swoosh: swooshSound,
+  lostBattle: lostBattleSound,
 }
 
 function playSound(source) {
@@ -86,4 +88,8 @@ export function playAttackSound({
 
 export function playDodgeSound() {
   playSound(soundSources.swoosh)
+}
+
+export function playLostBattleSound() {
+  playSound(soundSources.lostBattle)
 }
