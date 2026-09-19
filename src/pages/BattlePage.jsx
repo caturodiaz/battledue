@@ -11,6 +11,11 @@ import {
   processBattleStateStartOfTurn,
 } from '../battle/ai/battleStates'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
+import {
+  playAttackSound,
+  playEnergyReadySound,
+  playVictorySound,
+} from '../battle/audio/battleSounds'
 
 const BASE_HP = 100
 const MAX_ENERGY = 100
@@ -750,6 +755,8 @@ function BattlePage() {
         setIsBattleFinished(true)
         setIsProcessingTurn(false)
 
+        playVictorySound()
+
         addLog(
           `🏆 ¡${currentDefender.name} gana el combate! ${currentAttacker.name} cayó por efecto de estado.`,
           'winner',
@@ -780,18 +787,27 @@ function BattlePage() {
         })
       )
 
+      const previousEnergy =
+        currentEnergy
+
+      const newDefendEnergy =
+        Math.min(
+          MAX_ENERGY,
+          previousEnergy + 10
+        )
+
+      if (
+        previousEnergy < MAX_ENERGY &&
+        newDefendEnergy >= MAX_ENERGY
+      ) {
+        playEnergyReadySound()
+      }
+
       setEnergy(
-        (previousEnergy) => ({
-          ...previousEnergy,
+        (previousEnergyState) => ({
+          ...previousEnergyState,
           [currentAttacker.id]:
-            Math.min(
-              MAX_ENERGY,
-              (
-                previousEnergy[
-                  currentAttacker.id
-                ] || 0
-              ) + 10
-            ),
+            newDefendEnergy,
         })
       )
 
@@ -997,6 +1013,18 @@ function BattlePage() {
       stateMessage: stateResult.message,
     }
 
+    const wasDefending =
+        defending[
+          currentDefender.id
+        ] || false
+
+      if (result.type !== 'miss') {
+        playAttackSound({
+          attacker: currentAttacker,
+          defenderIsDefending: wasDefending,
+        })
+      }
+
     if (stateResult.consumeEvasion) {
       setBattleStates((previous) => ({
         ...previous,
@@ -1031,6 +1059,13 @@ function BattlePage() {
                   : 13
           )
       )
+
+      if (
+        currentEnergy < MAX_ENERGY &&
+        newEnergy >= MAX_ENERGY
+      ) {
+        playEnergyReadySound()
+      }
 
     setEnergy(
       (previousEnergy) => ({
@@ -1286,6 +1321,8 @@ function BattlePage() {
         setIsBattleFinished(
           true
         )
+
+        playVictorySound()
 
         addLog(
           `🏆 ¡${currentAttacker.name} gana el combate!`,

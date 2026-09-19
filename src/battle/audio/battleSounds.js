@@ -4,35 +4,37 @@ import hitSound from '../../assets/sounds/golpe.mp3'
 import swordSound from '../../assets/sounds/sword.wav'
 import swordShieldSound from '../../assets/sounds/sword_with_shield.mp3'
 
-const sounds = {
-  victory: new Audio(victorySound),
-  energy: new Audio(energySound),
-  hit: new Audio(hitSound),
-  sword: new Audio(swordSound),
-  swordShield: new Audio(swordShieldSound),
+const soundSources = {
+  victory: victorySound,
+  energy: energySound,
+  hit: hitSound,
+  sword: swordSound,
+  swordShield: swordShieldSound,
 }
 
-Object.values(sounds).forEach((audio) => {
-  audio.preload = 'auto'
-})
-
-function playSound(audio) {
-  if (!audio) {
+function playSound(source) {
+  if (!source) {
     return
   }
 
-  audio.currentTime = 0
+  const audio = new Audio(source)
+
+  audio.volume = 0.85
+
   audio.play().catch(() => {})
 }
 
 function getWeapon(character) {
-  return character?.weapon
-    ?.trim()
-    .toLowerCase() || ''
+  return (
+    character?.weapon
+      ?.trim()
+      .toLowerCase() || ''
+  )
 }
 
 export function usesSword(character) {
-  const weapon = getWeapon(character)
+  const weapon =
+    getWeapon(character)
 
   return (
     weapon.includes('espada') ||
@@ -41,26 +43,41 @@ export function usesSword(character) {
 }
 
 export function playVictorySound() {
-  playSound(sounds.victory)
+  playSound(
+    soundSources.victory
+  )
 }
 
 export function playEnergyReadySound() {
-  playSound(sounds.energy)
+  playSound(
+    soundSources.energy
+  )
 }
 
 export function playAttackSound({
   attacker,
   defenderIsDefending = false,
 }) {
-  if (defenderIsDefending && usesSword(attacker)) {
-    playSound(sounds.swordShield)
+  if (
+    defenderIsDefending &&
+    usesSword(attacker)
+  ) {
+    playSound(
+      soundSources.swordShield
+    )
+
     return
   }
 
   if (usesSword(attacker)) {
-    playSound(sounds.sword)
+    playSound(
+      soundSources.sword
+    )
+
     return
   }
 
-  playSound(sounds.hit)
+  playSound(
+    soundSources.hit
+  )
 }
