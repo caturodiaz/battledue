@@ -6,19 +6,6 @@
   position: relative;
 }
 
-.battle-character:has(.battle-status-evasion)::before {
-  content: '';
-  position: absolute;
-  inset: 12% 8% 6%;
-  border: 1px solid rgba(56, 189, 248, .55);
-  border-radius: 28px;
-  pointer-events: none;
-  opacity: .7;
-  filter: blur(.2px);
-  animation: battle-evasion-aura 1.8s ease-in-out infinite;
-  z-index: 0;
-}
-
 .battle-character:has(.battle-status-evasion) .battle-character-image {
   animation: battle-evasion-float 1.5s ease-in-out infinite;
   filter: drop-shadow(0 0 10px rgba(56, 189, 248, .28));
