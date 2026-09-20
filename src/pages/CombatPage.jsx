@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import BattlePage from './BattlePage'
 import OnlineBattlePage from './OnlineBattlePage'
+import OnlineBattleEffects from './OnlineBattleEffects'
 import './CombatPage.css'
 
 export default function CombatPage() {
@@ -11,7 +12,11 @@ export default function CombatPage() {
   }
 
   if (mode === 'online') {
-    return <OnlineBattlePage onBackToModes={() => setMode(null)} />
+    return (
+      <OnlineBattleEffects>
+        <OnlineBattlePage onBackToModes={() => setMode(null)} />
+      </OnlineBattleEffects>
+    )
   }
 
   return (
