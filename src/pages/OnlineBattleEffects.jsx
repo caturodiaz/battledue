@@ -116,10 +116,9 @@ export default function OnlineBattleEffects({ children }) {
       if (result && result !== previousResultRef.current) {
         previousResultRef.current = result
         if (/ganó/i.test(result)) {
-          playVictorySound()
-          if (!root.querySelector('.online-fighter.is-mine')?.classList.contains('is-victorious')) {
-            playLostBattleSound()
-          }
+          const myName = root.querySelector('.online-fighter.is-mine strong')?.textContent?.trim() || ''
+          if (myName && result.includes(myName)) playVictorySound()
+          else playLostBattleSound()
         }
       }
 
