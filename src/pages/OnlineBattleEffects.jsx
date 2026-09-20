@@ -8,13 +8,8 @@ import {
 } from '../battle/audio/battleSounds'
 import '../styles/OnlineBattleEffects.css'
 
-function readHp(fighter) {
-  const label = fighter.querySelector('small')?.textContent || ''
-  const match = label.match(/(\d+)\s*\/\s*(\d+)/)
-  return match ? Number(match[1]) : null
-}
-
 function flash(fighter, className, duration = 650) {
+  if (!fighter) return
   fighter.classList.remove(className)
   void fighter.offsetWidth
   fighter.classList.add(className)
@@ -26,45 +21,29 @@ function getFighters(root) {
 }
 
 function getFighterName(fighter) {
-  return fighter.querySelector('strong')?.textContent?.trim() || ''
+  return fighter?.querySelector('strong')?.textContent?.trim() || ''
 }
 
-function findFighterByName(root, name) {
-  if (!name) return null
-  return getFighters(root).find(fighter => getFighterName(fighter) === name) || null
+function findFighterByUserId(root, userId) {
+  if (!userId) return null
+  return root.querySelector(`.online-fighter[data-user-id="${CSS.escape(userId)}"]`)
 }
 
-function findLogTarget(root, logText, action) {
-  const fighters = getFighters(root)
-  const names = fighters.map(getFighterName).filter(Boolean)
+function getOpponentFighter(root, actorUserId) {
+  return getFighters(root).find(fighter => fighter.dataset.userId !== actorUserId) || null
+}
 
-  // The important distinction here is that the animation belongs to the
-  // affected fighter, not to every card. Log messages normally contain the
-  // character that was affected close to the action verb.
-  if (action === 'dodge') {
-    const beforeDodge = logText.match(/([^:]+?)\s+(?:esquiv(?:ó|o)|evit(?:ó|o))/i)?.[1]?.trim()
-    const afterDodge = logText.match(/(?:esquiv(?:ó|o)|evit(?:ó|o))[^:]*?\s+(?:por|a)\s+([^.!]+)/i)?.[1]?.trim()
-    return findFighterByName(root, beforeDodge) || findFighterByName(root, afterDodge) || fighters.find(f => names.some(name => logText.includes(name))) || null
-  }
+function isDodgeMessage(message) {
+  return /esquiv(?:ó|o)|evit(?:ó|o)|ataque fue esquivado/i.test(message)
+}
 
-  if (action === 'defend' || action === 'heal') {
-    const exact = names.find(name => logText.includes(name))
-    return findFighterByName(root, exact)
-  }
-
-  if (action === 'critical') {
-    const afterTarget = logText.match(/(?:crític(?:o|a)|CRÍTICO)[^.!]*?\b(?:a|contra)\s+([^.!]+)/i)?.[1]?.trim()
-    const target = names.find(name => afterTarget?.includes(name))
-    return findFighterByName(root, target) || fighters.find(f => names.some(name => logText.includes(name))) || null
-  }
-
-  return null
+function isSelfStatusMiss(message) {
+  return /inconsciente|aturdido/i.test(message)
 }
 
 export default function OnlineBattleEffects({ children }) {
   const rootRef = useRef(null)
-  const previousHpRef = useRef(new Map())
-  const previousLogRef = useRef('')
+  const previousLogIdRef = useRef('')
   const previousResultRef = useRef('')
 
   useEffect(() => {
@@ -72,46 +51,41 @@ export default function OnlineBattleEffects({ children }) {
     if (!root) return undefined
 
     const observer = new MutationObserver(() => {
-      const fighters = getFighters(root)
-
-      fighters.forEach((fighter) => {
-        const hp = readHp(fighter)
-        const key = getFighterName(fighter)
-        const previousHp = previousHpRef.current.get(key)
-
-        if (hp !== null && previousHp !== undefined && hp < previousHp) {
-          flash(fighter, 'online-fighter-hit')
-          playAttackSound({})
-        }
-
-        if (hp !== null) previousHpRef.current.set(key, hp)
-      })
-
       const newestLog = root.querySelector('.battle-log-entry')
+      const logId = newestLog?.dataset.logId || ''
       const logText = newestLog?.textContent?.trim() || ''
 
-      if (logText && logText !== previousLogRef.current) {
-        previousLogRef.current = logText
+      // A new battle starts with an empty log. Clear the previous action so
+      // a rematch can never replay the last action from the previous battle.
+      if (!logId) {
+        previousLogIdRef.current = ''
+      } else if (logId !== previousLogIdRef.current) {
+        previousLogIdRef.current = logId
 
-        if (/esquiv|esquivo|evitó|evito/i.test(logText)) {
-          const target = findLogTarget(root, logText, 'dodge')
-          if (target) {
+        const actionType = newestLog.dataset.logType || 'attack'
+        const actorUserId = newestLog.dataset.actorUserId || ''
+        const actor = findFighterByUserId(root, actorUserId)
+        const target = getOpponentFighter(root, actorUserId)
+
+        if (actionType === 'defend') {
+          flash(actor, 'online-fighter-defend', 900)
+        } else if (/recupera toda su vida|vida restaurada/i.test(logText)) {
+          flash(actor, 'online-fighter-heal', 1000)
+          playFullHealingSound()
+        } else if (isDodgeMessage(logText)) {
+          // A status failure belongs to the acting character, not the target.
+          if (!isSelfStatusMiss(logText)) {
             flash(target, 'online-fighter-dodge')
             playDodgeSound()
           }
-        } else if (/defiende|defenderse|se prepara para defender/i.test(logText)) {
-          const target = findLogTarget(root, logText, 'defend')
-          if (target) flash(target, 'online-fighter-defend', 900)
-        } else if (/recupera toda su vida|vida restaurada/i.test(logText)) {
-          const target = findLogTarget(root, logText, 'heal')
-          if (target) flash(target, 'online-fighter-heal', 1000)
-          playFullHealingSound()
+        } else if (target && (actionType === 'attack' || actionType === 'ability' || actionType === 'ultimate')) {
+          flash(target, 'online-fighter-hit')
+          playAttackSound({})
         }
 
         if (/TÉCNICA DEFINITIVA/i.test(logText)) {
-          const attacker = getFighters(root).find((fighter) => logText.includes(getFighterName(fighter)))
-          const image = attacker?.querySelector('img')?.src || ''
-          const name = getFighterName(attacker) || 'Jugador'
+          const image = actor?.querySelector('img')?.src || ''
+          const name = getFighterName(actor) || 'Jugador'
           const overlay = document.createElement('div')
           overlay.className = 'online-ultimate-overlay'
           const backdrop = document.createElement('div')
@@ -142,13 +116,14 @@ export default function OnlineBattleEffects({ children }) {
         }
 
         if (/CRÍTICO/i.test(logText)) {
-          const target = findLogTarget(root, logText, 'critical')
-          if (target) flash(target, 'online-fighter-critical', 700)
+          flash(target, 'online-fighter-critical', 700)
         }
       }
 
       const result = root.querySelector('.online-result')?.textContent?.trim() || ''
-      if (result && result !== previousResultRef.current) {
+      if (!result) {
+        previousResultRef.current = ''
+      } else if (result !== previousResultRef.current) {
         previousResultRef.current = result
         if (/ganó/i.test(result)) {
           const myName = root.querySelector('.online-fighter.is-mine strong')?.textContent?.trim() || ''
