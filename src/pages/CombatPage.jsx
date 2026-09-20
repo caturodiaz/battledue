@@ -3,6 +3,7 @@ import BattlePage from './BattlePage'
 import OnlineBattlePage from './OnlineBattlePage'
 import OnlineBattleEffects from './OnlineBattleEffects'
 import './CombatPage.css'
+import '../styles/OnlineBattleLayoutFix.css'
 
 export default function CombatPage() {
   const [mode, setMode] = useState(null)
