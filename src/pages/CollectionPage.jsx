@@ -3,17 +3,7 @@ import { useCharacters } from '../hooks/useCharacters'
 import '../styles/Collection.css'
 
 function getCharacterImage(character) {
-  if (character.image) {
-    return character.image
-  }
-
-  const galleryImages = character.profile?.galleryImages
-  if (Array.isArray(galleryImages) && galleryImages.length > 0) {
-    const firstImage = galleryImages[0]
-    return typeof firstImage === 'string' ? firstImage : firstImage?.url || ''
-  }
-
-  return ''
+  return character.profile?.primaryImage || ''
 }
 
 function CollectionPage() {
