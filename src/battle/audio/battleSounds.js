@@ -6,6 +6,7 @@ import swordShieldSound from '../../assets/sounds/sword_with_shield.mp3'
 import swooshSound from '../../assets/sounds/swoosh.mp3'
 import lostBattleSound from '../../assets/sounds/lost-battle.mp3'
 import fullHealingSound from '../../assets/sounds/full-healing.mp3'
+import { supabase } from '../../lib/supabaseClient'
 
 const soundSources = {
   victory: victorySound,
@@ -30,6 +31,49 @@ function playSound(source) {
   audio.play().catch(() => {})
 }
 
+async function awardBattleXp(won) {
+  try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error('Error obteniendo usuario para XP:', userError)
+      return
+    }
+
+    if (!user) {
+      console.warn('No hay usuario autenticado. No se otorgará XP.')
+      return
+    }
+
+    const { data, error } = await supabase.rpc(
+      'award_battle_xp',
+      {
+        p_user_id: user.id,
+        p_won: won,
+      },
+    )
+
+    if (error) {
+      console.error('Error otorgando XP de batalla:', error)
+      return
+    }
+
+    const progression = Array.isArray(data)
+      ? data[0]
+      : data
+
+    console.log(
+      `⭐ XP de batalla: +${progression?.experience_gained ?? (won ? 100 : 50)} XP`,
+      progression,
+    )
+  } catch (error) {
+    console.error('Error inesperado otorgando XP de batalla:', error)
+  }
+}
+
 function getWeapon(character) {
   return (
     character?.weapon
@@ -52,6 +96,8 @@ export function playVictorySound() {
   playSound(
     soundSources.victory
   )
+
+  void awardBattleXp(true)
 }
 
 export function playEnergyReadySound() {
@@ -94,6 +140,8 @@ export function playDodgeSound() {
 
 export function playLostBattleSound() {
   playSound(soundSources.lostBattle)
+
+  void awardBattleXp(false)
 }
 
 export function playFullHealingSound() {
