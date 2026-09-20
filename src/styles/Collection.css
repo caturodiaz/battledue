@@ -30,6 +30,141 @@
   letter-spacing: .08em;
 }
 
+.player-progress-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  margin-top: 30px;
+  padding: 22px;
+  border: 3px solid #111;
+  background: #111;
+  color: #fff;
+  box-shadow: 7px 7px 0 #a20707;
+  transform: rotate(-.35deg);
+}
+
+.player-progress-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.player-level-badge {
+  flex: 0 0 92px;
+  min-height: 92px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border: 3px solid #fff;
+  background: #a20707;
+  box-shadow: 4px 4px 0 #fff;
+  transform: rotate(2deg);
+}
+
+.player-level-badge span {
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .1em;
+}
+
+.player-level-badge strong {
+  font-size: 2.5rem;
+  line-height: .9;
+  font-weight: 950;
+}
+
+.player-progress-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.player-progress-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.player-progress-heading .eyebrow {
+  margin-bottom: 4px;
+  color: #d7d2c8;
+}
+
+.player-progress-heading h2 {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
+  letter-spacing: -.04em;
+}
+
+.player-progress-heading > strong {
+  white-space: nowrap;
+  font-size: .95rem;
+  font-weight: 950;
+}
+
+.player-xp-track {
+  height: 16px;
+  margin-top: 15px;
+  overflow: hidden;
+  border: 2px solid #fff;
+  background: #373737;
+}
+
+.player-xp-fill {
+  height: 100%;
+  background: #e22a20;
+  transition: width .35s ease;
+}
+
+.player-xp-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 7px;
+  color: #c9c5bd;
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.player-progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  align-self: stretch;
+  min-width: 250px;
+  border-left: 2px solid #4a4a4a;
+}
+
+.player-progress-stats div {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  padding: 0 14px;
+  text-align: center;
+}
+
+.player-progress-stats div + div {
+  border-left: 1px solid #4a4a4a;
+}
+
+.player-progress-stats strong {
+  font-size: 1.6rem;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.player-progress-stats span {
+  color: #aaa59d;
+  font-size: .6rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
 .collection-section {
   margin-top: 44px;
 }
@@ -209,6 +344,17 @@
   .collection-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .player-progress-card {
+    grid-template-columns: 1fr;
+  }
+
+  .player-progress-stats {
+    min-width: 0;
+    border-left: 0;
+    border-top: 2px solid #4a4a4a;
+    padding-top: 16px;
+  }
 }
 
 @media (max-width: 680px) {
@@ -229,6 +375,29 @@
   .collection-card-body {
     padding: 11px;
   }
+
+  .player-progress-card {
+    padding: 17px;
+  }
+
+  .player-progress-main {
+    align-items: flex-start;
+  }
+
+  .player-level-badge {
+    flex-basis: 76px;
+    min-height: 76px;
+  }
+
+  .player-level-badge strong {
+    font-size: 2rem;
+  }
+
+  .player-progress-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 
 @media (max-width: 420px) {
@@ -238,5 +407,18 @@
 
   .collection-card-body h3 {
     font-size: 1rem;
+  }
+
+  .player-progress-main {
+    gap: 14px;
+  }
+
+  .player-level-badge {
+    flex-basis: 66px;
+    min-height: 66px;
+  }
+
+  .player-progress-stats strong {
+    font-size: 1.3rem;
   }
 }
