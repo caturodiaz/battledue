@@ -32,6 +32,7 @@ export default function OnlineBattlePage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const battleCharactersRef = useRef([])
+  const battleCharacterIdsRef = useRef('')
 
   useEffect(() => {
     battleCharactersRef.current = battleCharacters
@@ -55,6 +56,34 @@ export default function OnlineBattlePage() {
     else setCharacters(data || [])
   }
 
+  async function loadBattleCharactersFromState(battleState) {
+    const players = battleState?.players || {}
+    const characterIds = [...new Set(
+      Object.values(players)
+        .map(player => player?.character_id)
+        .filter(Boolean)
+    )]
+
+    if (characterIds.length !== 2) return
+
+    const key = [...characterIds].sort().join('|')
+    if (battleCharacterIdsRef.current === key && battleCharactersRef.current.length === 2) return
+
+    const { data, error: charactersError } = await supabase
+      .from('characters')
+      .select('id, name, image, profile')
+      .in('id', characterIds)
+
+    if (charactersError) {
+      setError(charactersError.message)
+      return
+    }
+
+    const loadedCharacters = data || []
+    setBattleCharacters(loadedCharacters)
+    battleCharacterIdsRef.current = loadedCharacters.length === 2 ? key : ''
+  }
+
   async function refreshRoom(roomId, { includeParticipants = true } = {}) {
     const { data, error: roomError } = await supabase
       .from('battle_rooms')
@@ -63,6 +92,12 @@ export default function OnlineBattlePage() {
       .single()
     if (roomError) { setError(roomError.message); return }
     setRoom(data)
+
+    if (data.status === 'active' || data.status === 'finished') {
+      await loadBattleCharactersFromState(data.battle_state)
+    } else if (data.status === 'ready') {
+      battleCharacterIdsRef.current = ''
+    }
 
     if (!includeParticipants) return
 
@@ -75,16 +110,6 @@ export default function OnlineBattlePage() {
     setParticipants(participantData || [])
     const mine = (participantData || []).find(p => p.user_id === user?.id)
     setSelectedCharacterId(mine?.character_id || null)
-
-    const ids = (participantData || []).map(p => p.character_id).filter(Boolean)
-    if (data.status === 'active' && ids.length === 2) {
-      const { data: selectedCharacters, error: charactersError } = await supabase
-        .from('characters')
-        .select('id, name, image, profile')
-        .in('id', ids)
-      if (charactersError) { setError(charactersError.message); return }
-      setBattleCharacters(selectedCharacters || [])
-    }
   }
 
   useEffect(() => {
@@ -119,11 +144,21 @@ export default function OnlineBattlePage() {
           setRoom(null)
           setParticipants([])
           setBattleCharacters([])
+          battleCharacterIdsRef.current = ''
           return
         }
 
         if (payload.new) {
           setRoom(payload.new)
+
+          if (payload.new.status === 'active' || payload.new.status === 'finished') {
+            loadBattleCharactersFromState(payload.new.battle_state)
+          }
+
+          if (payload.new.status === 'ready') {
+            setBattleCharacters([])
+            battleCharacterIdsRef.current = ''
+          }
 
           if (payload.new.status === 'active' && battleCharactersRef.current.length === 0) {
             refreshParticipantsAndCharacters()
@@ -330,6 +365,7 @@ export default function OnlineBattlePage() {
     setRoom(data)
     setParticipants(previous => previous.map(participant => ({ ...participant, character_id: null })))
     setBattleCharacters([])
+    battleCharacterIdsRef.current = ''
     setSelectedCharacterId(null)
     setSelectedAction('basic')
     setLoading(false)
@@ -359,7 +395,7 @@ export default function OnlineBattlePage() {
       const character = battleCharacters.find(c => c.id === state.character_id)
       const hpPercent = Math.max(0, Math.min(100, (Number(state.hp || 0) / Math.max(1, Number(state.max_hp || 1))) * 100))
       return (
-        <article className={`online-fighter ${participant.user_id === user?.id ? 'is-mine' : ''} ${state.hp <= 0 ? 'is-defeated' : ''}`} key={participant.user_id}>
+        <article className={`online-fighter ${participant.user_id === user?.id ? 'is-mine' : ''} ${state.hp <= 0 ? 'is-defeated' : ''}`} data-user-id={participant.user_id} data-character-id={state.character_id || ''} key={participant.user_id}>
           <span>{participant.user_id === user?.id ? 'VOS' : 'OPONENTE'}</span>
           {getImage(character) ? <img src={getImage(character)} alt={character?.name || 'Personaje'} /> : null}
           <strong>{character?.name || 'Personaje'}</strong>
@@ -409,7 +445,7 @@ export default function OnlineBattlePage() {
         )}
 
         <div className="battle-log online-log">
-          {(battleState?.log || []).slice().reverse().map(entry => <div className={`battle-log-entry battle-log-${entry.type || 'attack'}`} key={entry.id}>{entry.message}</div>)}
+          {(battleState?.log || []).slice().reverse().map(entry => <div className={`battle-log-entry battle-log-${entry.type || 'attack'}`} data-log-id={entry.id || ''} data-log-type={entry.type || 'attack'} data-actor-user-id={entry.user_id || ''} key={entry.id}>{entry.message}</div>)}
         </div>
       </section>
     </main>
