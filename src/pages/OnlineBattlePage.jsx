@@ -125,9 +125,6 @@ export default function OnlineBattlePage() {
         if (payload.new) {
           setRoom(payload.new)
 
-          // battle_state arrives directly in the Realtime payload. Do not
-          // re-query the room after every attack. Only load the static
-          // participant/character data once when the battle becomes active.
           if (payload.new.status === 'active' && battleCharactersRef.current.length === 0) {
             refreshParticipantsAndCharacters()
           }
@@ -149,9 +146,6 @@ export default function OnlineBattlePage() {
         }
       })
 
-    // If Realtime is unavailable, poll only battle_rooms. Participants and
-    // characters are static during an active battle and do not need to be
-    // downloaded every 10 seconds.
     const fallbackPoll = window.setInterval(() => {
       if (!disposed && !realtimeHealthy) refreshRoom(room.id, { includeParticipants: false })
     }, 10000)
@@ -208,7 +202,7 @@ export default function OnlineBattlePage() {
     const { error: joinError } = await supabase
       .from('battle_participants')
       .insert({ room_id: data.id, user_id: user.id, role: 'guest' })
-    if (joinError) { setError(joinError.message) }
+    if (joinError) setError(joinError.message)
     else {
       const { data: updated, error: updateError } = await supabase
         .from('battle_rooms')
@@ -297,6 +291,17 @@ export default function OnlineBattlePage() {
     setLoading(false)
   }
 
+  function startAnotherBattle() {
+    setRoom(null)
+    setParticipants([])
+    setBattleCharacters([])
+    setSelectedCharacterId(null)
+    setSelectedAction('basic')
+    setCode('')
+    setError('')
+    setLoading(false)
+  }
+
   const host = participants.find(p => p.role === 'host')
   const guest = participants.find(p => p.role === 'guest')
   const myName = profile?.display_name || user?.email?.split('@')[0] || 'Vos'
@@ -310,7 +315,6 @@ export default function OnlineBattlePage() {
   const opponentParticipant = participants.find(p => p.user_id !== user?.id)
   const opponentBattlePlayer = opponentParticipant ? battleState?.players?.[opponentParticipant.user_id] : null
   const myBattleCharacter = myBattlePlayer ? battleCharacters.find(c => c.id === myBattlePlayer.character_id) : null
-  const opponentBattleCharacter = opponentBattlePlayer ? battleCharacters.find(c => c.id === opponentBattlePlayer.character_id) : null
   const isMyTurn = battleState?.turn_user_id === user?.id && battleState?.status !== 'finished' && room?.status !== 'finished'
   const myAbilities = Array.isArray(myBattleCharacter?.profile?.abilities) ? myBattleCharacter.profile.abilities : []
   const currentEnergy = Number(myBattlePlayer?.energy || 0)
@@ -336,9 +340,11 @@ export default function OnlineBattlePage() {
 
     const winnerParticipant = participants.find(p => p.user_id === battleState?.winner_user_id)
     const winnerCharacter = winnerParticipant ? battleCharacters.find(c => c.id === battleState?.players?.[winnerParticipant.user_id]?.character_id) : null
+    const didWin = Boolean(battleState?.winner_user_id) && battleState.winner_user_id === user?.id
+    const didDraw = isFinished && !battleState?.winner_user_id
 
     return <main className="online-battle">
-      <header><p className="eyebrow">COMBATE ONLINE</p><h1>{isFinished ? 'Combate terminado' : 'La batalla comenzó'}</h1><p>{isFinished ? `Ganador: ${winnerCharacter?.name || 'Jugador'}` : 'Las acciones se sincronizan entre los dos jugadores.'}</p></header>
+      <header><p className="eyebrow">COMBATE ONLINE</p><h1>{isFinished ? 'Combate terminado' : 'La batalla comenzó'}</h1><p>{isFinished ? (didDraw ? 'El combate terminó sin un ganador.' : `Ganador: ${winnerCharacter?.name || 'Jugador'}`) : 'Las acciones se sincronizan entre los dos jugadores.'}</p></header>
       <section className="battle-room online-arena">
         <div className="online-fighters">{participants.map(renderFighter)}</div>
         <div className="room-status"><span>{isFinished ? 'RESULTADO' : `ROUND ${battleState?.round || 1}`}</span><strong>{isFinished ? '🏆 COMBATE TERMINADO' : isMyTurn ? '⚔️ TU TURNO' : '⌛ TURNO DEL OPONENTE'}</strong></div>
@@ -359,7 +365,15 @@ export default function OnlineBattlePage() {
           </div>
         )}
 
-        {isFinished && <div className="selection-status online-result">🏆 {winnerCharacter?.name || 'Jugador'} ganó el combate.</div>}
+        {isFinished && (
+          <div className="selection-status online-result">
+            <strong>{didDraw ? '🤝 EMPATE' : didWin ? '🏆 ¡VICTORIA!' : '💥 DERROTA'}</strong>
+            <span>{didDraw ? 'No hubo un ganador en este combate.' : didWin ? `${winnerCharacter?.name || 'Tu personaje'} consiguió la victoria.` : `${winnerCharacter?.name || 'El oponente'} ganó el combate.`}</span>
+            <div className="online-result__actions">
+              <button className="start-button" onClick={startAnotherBattle} type="button">🔄 HACER OTRA BATALLA</button>
+            </div>
+          </div>
+        )}
 
         <div className="battle-log online-log">
           {(battleState?.log || []).slice().reverse().map(entry => <div className={`battle-log-entry battle-log-${entry.type || 'attack'}`} key={entry.id}>{entry.message}</div>)}
