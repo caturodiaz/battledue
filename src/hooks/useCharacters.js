@@ -1,16 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  addCharacter,
-  deleteCharacter,
-  getCharacters,
-  updateCharacter,
-  replaceCharacters,
-} from '../utils/storage'
+import { addCharacter, deleteCharacter, getCharacters, updateCharacter, replaceCharacters } from '../utils/storage'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 
 export function useCharacters() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [allCharacters, setAllCharacters] = useState([])
   const [unlockedCharacterIds, setUnlockedCharacterIds] = useState(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -18,7 +12,6 @@ export function useCharacters() {
 
   useEffect(() => {
     let isMounted = true
-
     async function loadCharacters() {
       if (!user?.id) {
         setAllCharacters([])
@@ -26,81 +19,49 @@ export function useCharacters() {
         setIsLoading(false)
         return
       }
-
       try {
         setIsLoading(true)
         setError(null)
-
         const [data, unlockResult] = await Promise.all([
           getCharacters(),
-          supabase
-            .from('character_unlocks')
-            .select('character_id')
-            .eq('user_id', user.id),
+          supabase.from('character_unlocks').select('character_id').eq('user_id', user.id),
         ])
-
-        if (unlockResult.error) {
-          throw unlockResult.error
-        }
-
+        if (unlockResult.error) throw unlockResult.error
         if (isMounted) {
           setAllCharacters(data || [])
-          setUnlockedCharacterIds(
-            new Set((unlockResult.data || []).map((item) => item.character_id)),
-          )
+          setUnlockedCharacterIds(new Set((unlockResult.data || []).map((item) => item.character_id)))
         }
       } catch (loadError) {
         console.error('Error cargando personajes:', loadError)
-
         if (isMounted) {
           setError(loadError)
           setAllCharacters([])
           setUnlockedCharacterIds(new Set())
         }
       } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
+        if (isMounted) setIsLoading(false)
       }
     }
-
     loadCharacters()
-
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [user?.id])
 
-  const createCharacter = async (character) => {
+  const createCharacter = async (character, unlockConfig = {}) => {
     try {
       const updatedCharacters = await addCharacter(character)
-      const createdCharacter = updatedCharacters.find(
-        (item) => !allCharacters.some((current) => current.id === item.id),
-      )
-
+      const createdCharacter = updatedCharacters.find((item) => !allCharacters.some((current) => current.id === item.id))
       if (createdCharacter?.id && user?.id) {
-        const { error: unlockError } = await supabase
-          .from('character_unlocks')
-          .upsert(
-            {
-              user_id: user.id,
-              character_id: createdCharacter.id,
-              source: 'admin',
-            },
-            { onConflict: 'user_id,character_id' },
-          )
-
-        if (unlockError) {
-          throw unlockError
+        const isAdmin = profile?.role === 'admin'
+        const unlockType = isAdmin ? (unlockConfig.type || 'initial') : 'initial'
+        const unlockLevel = unlockType === 'level' ? Math.max(1, Number(unlockConfig.level) || 1) : null
+        const { error: updateError } = await supabase.from('characters').update({ created_by: user.id, unlock_type: unlockType, unlock_level: unlockLevel }).eq('id', createdCharacter.id)
+        if (updateError) throw updateError
+        if (unlockType === 'initial') {
+          const { error: unlockError } = await supabase.from('character_unlocks').upsert({ user_id: user.id, character_id: createdCharacter.id, source: isAdmin ? 'admin' : 'creator', unlock_type: 'initial', unlock_value: null }, { onConflict: 'user_id,character_id' })
+          if (unlockError) throw unlockError
+          setUnlockedCharacterIds((current) => new Set([...current, createdCharacter.id]))
         }
-
-        setUnlockedCharacterIds((current) => {
-          const next = new Set(current)
-          next.add(createdCharacter.id)
-          return next
-        })
       }
-
       setAllCharacters(updatedCharacters)
       return createdCharacter || updatedCharacters[updatedCharacters.length - 1]
     } catch (createError) {
@@ -151,29 +112,8 @@ export function useCharacters() {
     }
   }
 
-  const unlockedCharacters = useMemo(
-    () => allCharacters.filter((character) => unlockedCharacterIds.has(character.id)),
-    [allCharacters, unlockedCharacterIds],
-  )
+  const unlockedCharacters = useMemo(() => allCharacters.filter((character) => unlockedCharacterIds.has(character.id)), [allCharacters, unlockedCharacterIds])
+  const lockedCharacters = useMemo(() => allCharacters.filter((character) => !unlockedCharacterIds.has(character.id)), [allCharacters, unlockedCharacterIds])
 
-  const lockedCharacters = useMemo(
-    () => allCharacters.filter((character) => !unlockedCharacterIds.has(character.id)),
-    [allCharacters, unlockedCharacterIds],
-  )
-
-  return {
-    // `characters` remains the complete catalog so the existing character
-    // management UI does not lose records when unlocks are introduced.
-    characters: allCharacters,
-    allCharacters,
-    unlockedCharacters,
-    lockedCharacters,
-    unlockedCharacterIds,
-    isLoading,
-    error,
-    createCharacter,
-    editCharacter,
-    removeCharacter,
-    importCharacters,
-  }
+  return { characters: allCharacters, allCharacters, unlockedCharacters, lockedCharacters, unlockedCharacterIds, isLoading, error, createCharacter, editCharacter, removeCharacter, importCharacters }
 }
