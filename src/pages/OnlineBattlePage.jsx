@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { getBattleStateInfo } from '../battle/ai/battleStates'
+import BattleResultScreen from '../components/BattleResultScreen'
 import '../styles/OnlineBattle.css'
 
 function makeRoomCode() {
@@ -45,52 +46,25 @@ function OnlineBattleCharacterCard({ character, participant, state, isActive, is
         </div>
         <strong className="battle-hp-value">{Math.ceil(hp)}</strong>
       </div>
-
-      <div className="battle-hp-bar">
-        <div className="battle-hp-fill" style={{ width: `${hpPercentage}%` }} />
-      </div>
-
-      <div className="battle-hp-label">
-        <span>VIDA</span>
-        <span>{Math.ceil(hp)} / {Math.ceil(maxHp)}</span>
-      </div>
-
+      <div className="battle-hp-bar"><div className="battle-hp-fill" style={{ width: `${hpPercentage}%` }} /></div>
+      <div className="battle-hp-label"><span>VIDA</span><span>{Math.ceil(hp)} / {Math.ceil(maxHp)}</span></div>
       <div className={`battle-energy ${energy >= 100 ? 'energy-is-full' : ''}`}>
-        <div className="battle-energy-header">
-          <span>ENERGÍA</span>
-          <span>{Math.round(energy)}%</span>
-        </div>
-        <div className="battle-energy-bar">
-          <div className="battle-energy-fill" style={{ width: `${energyPercentage}%` }} />
-        </div>
+        <div className="battle-energy-header"><span>ENERGÍA</span><span>{Math.round(energy)}%</span></div>
+        <div className="battle-energy-bar"><div className="battle-energy-fill" style={{ width: `${energyPercentage}%` }} /></div>
       </div>
-
       {states.length > 0 && (
         <div className="battle-status-list">
           {getBattleStateInfo(states).map((battleState) => (
             <span className={`battle-status battle-status-${battleState.type}`} key={battleState.type} title={battleState.name}>
-              {battleState.icon} {battleState.name}
-              {battleState.stacks > 1 ? ` x${battleState.stacks}` : ''}
-              {battleState.turns ? ` · ${battleState.turns}` : ''}
+              {battleState.icon} {battleState.name}{battleState.stacks > 1 ? ` x${battleState.stacks}` : ''}{battleState.turns ? ` · ${battleState.turns}` : ''}
             </span>
           ))}
         </div>
       )}
-
       <div className="battle-character-image">
-        {isActive && (
-          <div className="battle-turn-badge">
-            ⚔️ {isMine ? '¡TU TURNO!' : '¡TURNO DEL OPONENTE!'}
-          </div>
-        )}
-
+        {isActive && <div className="battle-turn-badge">⚔️ {isMine ? '¡TU TURNO!' : '¡TURNO DEL OPONENTE!'}</div>}
         {state?.defending && <div className="battle-defense-badge">🛡️ DEFENDIENDO</div>}
-
-        {image ? (
-          <img src={image} alt={character?.name || 'Personaje'} />
-        ) : (
-          <div className="battle-character-placeholder">{character?.name?.[0] || '?'}</div>
-        )}
+        {image ? <img src={image} alt={character?.name || 'Personaje'} /> : <div className="battle-character-placeholder">{character?.name?.[0] || '?'}</div>}
       </div>
     </article>
   )
@@ -109,10 +83,9 @@ export default function OnlineBattlePage() {
   const [loading, setLoading] = useState(false)
   const battleCharactersRef = useRef([])
   const battleCharacterIdsRef = useRef('')
+  const rematchResetInFlight = useRef(false)
 
-  useEffect(() => {
-    battleCharactersRef.current = battleCharacters
-  }, [battleCharacters])
+  useEffect(() => { battleCharactersRef.current = battleCharacters }, [battleCharacters])
 
   async function loadCharacters() {
     if (!user) return
@@ -121,8 +94,7 @@ export default function OnlineBattlePage() {
     const ids = (unlocks || []).map(item => item.character_id)
     if (!ids.length) { setCharacters([]); return }
     const { data, error: charactersError } = await supabase.from('characters').select('id, name, image, profile').in('id', ids).order('name')
-    if (charactersError) setError(charactersError.message)
-    else setCharacters(data || [])
+    if (charactersError) setError(charactersError.message); else setCharacters(data || [])
   }
 
   async function loadBattleCharactersFromState(battleState) {
@@ -145,7 +117,7 @@ export default function OnlineBattlePage() {
     if (data.status === 'active' || data.status === 'finished') await loadBattleCharactersFromState(data.battle_state)
     else if (data.status === 'ready') battleCharacterIdsRef.current = ''
     if (!includeParticipants) return
-    const { data: participantData, error: participantsError } = await supabase.from('battle_participants').select('user_id, role, character_id').eq('room_id', roomId)
+    const { data: participantData, error: participantsError } = await supabase.from('battle_participants').select('user_id, role, character_id, rematch_status').eq('room_id', roomId)
     if (participantsError) { setError(participantsError.message); return }
     setParticipants(participantData || [])
     const mine = (participantData || []).find(p => p.user_id === user?.id)
@@ -158,13 +130,11 @@ export default function OnlineBattlePage() {
     let disposed = false
     let fullRefreshInFlight = false
     refreshRoom(room.id)
-
     const refreshParticipantsAndCharacters = async () => {
       if (disposed || fullRefreshInFlight) return
       fullRefreshInFlight = true
       try { await refreshRoom(room.id, { includeParticipants: true }) } finally { fullRefreshInFlight = false }
     }
-
     const channel = supabase.channel(`battle-room-${room.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` }, payload => {
         if (disposed) return
@@ -185,30 +155,24 @@ export default function OnlineBattlePage() {
         realtimeHealthy = status === 'SUBSCRIBED'
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') console.warn('Supabase Realtime no disponible para la sala:', subscriptionError)
       })
-
     const fallbackPoll = window.setInterval(() => {
       if (!disposed && !realtimeHealthy) refreshRoom(room.id, { includeParticipants: false })
     }, 10000)
-
     return () => { disposed = true; window.clearInterval(fallbackPoll); supabase.removeChannel(channel) }
   }, [room?.id])
 
-  useEffect(() => {
-    if (room?.status === 'ready') loadCharacters()
-  }, [room?.status, user?.id])
+  useEffect(() => { if (room?.status === 'ready') loadCharacters() }, [room?.status, user?.id])
 
   async function createRoom() {
     setLoading(true); setError('')
     const roomCode = makeRoomCode()
     const { data, error: insertError } = await supabase.from('battle_rooms').insert({ code: roomCode, host_user_id: user.id, status: 'waiting' }).select().single()
     if (insertError) { setError(insertError.message); setLoading(false); return }
-    const { error: participantError } = await supabase.from('battle_participants').insert({ room_id: data.id, user_id: user.id, role: 'host' })
+    const { error: participantError } = await supabase.from('battle_participants').insert({ room_id: data.id, user_id: user.id, role: 'host', rematch_status: 'pending' })
     if (participantError) {
-      setError(participantError.message)
-      await supabase.from('battle_rooms').delete().eq('id', data.id)
+      setError(participantError.message); await supabase.from('battle_rooms').delete().eq('id', data.id)
     } else {
-      setRoom(data)
-      setParticipants([{ user_id: user.id, role: 'host', character_id: null }])
+      setRoom(data); setParticipants([{ user_id: user.id, role: 'host', character_id: null, rematch_status: 'pending' }])
     }
     setLoading(false)
   }
@@ -221,12 +185,11 @@ export default function OnlineBattlePage() {
     if (data.host_user_id === user.id) { setError('No podés unirte a tu propia sala.'); setLoading(false); return }
     const { count } = await supabase.from('battle_participants').select('*', { count: 'exact', head: true }).eq('room_id', data.id)
     if ((count || 0) >= 2) { setError('Esta sala ya tiene dos jugadores.'); setLoading(false); return }
-    const { error: joinError } = await supabase.from('battle_participants').insert({ room_id: data.id, user_id: user.id, role: 'guest' })
+    const { error: joinError } = await supabase.from('battle_participants').insert({ room_id: data.id, user_id: user.id, role: 'guest', rematch_status: 'pending' })
     if (joinError) setError(joinError.message)
     else {
       const { data: updated, error: updateError } = await supabase.from('battle_rooms').update({ status: 'ready' }).eq('id', data.id).eq('status', 'waiting').select().single()
-      if (updateError) setError(updateError.message)
-      else { setRoom(updated || data); await refreshRoom(data.id) }
+      if (updateError) setError(updateError.message); else { setRoom(updated || data); await refreshRoom(data.id) }
     }
     setLoading(false)
   }
@@ -235,8 +198,7 @@ export default function OnlineBattlePage() {
     if (!room?.id || !user || loading || room.status !== 'ready') return
     setLoading(true); setError('')
     const { error: updateError } = await supabase.from('battle_participants').update({ character_id: characterId }).eq('room_id', room.id).eq('user_id', user.id)
-    if (updateError) setError(updateError.message)
-    else setSelectedCharacterId(characterId)
+    if (updateError) setError(updateError.message); else setSelectedCharacterId(characterId)
     setLoading(false)
   }
 
@@ -251,20 +213,15 @@ export default function OnlineBattlePage() {
     const guestHp = getMaxHp(guestCharacter)
     const firstUserId = getSpeed(hostCharacter) >= getSpeed(guestCharacter) ? host.user_id : guest.user_id
     const battleState = {
-      version: 1,
-      round: 1,
-      turn_user_id: firstUserId,
+      version: 1, round: 1, turn_user_id: firstUserId,
       players: {
         [host.user_id]: { user_id: host.user_id, role: 'host', character_id: host.character_id, hp: hostHp, max_hp: hostHp, energy: 0, defending: false, states: [] },
         [guest.user_id]: { user_id: guest.user_id, role: 'guest', character_id: guest.character_id, hp: guestHp, max_hp: guestHp, energy: 0, defending: false, states: [] },
       },
-      winner_user_id: null,
-      status: 'active',
-      log: [],
+      winner_user_id: null, status: 'active', log: [],
     }
     const { data, error: updateError } = await supabase.from('battle_rooms').update({ status: 'active', host_character_id: host.character_id, guest_character_id: guest.character_id, battle_state: battleState }).eq('id', room.id).eq('status', 'ready').select().single()
-    if (updateError) setError(updateError.message)
-    else setRoom(data)
+    if (updateError) setError(updateError.message); else setRoom(data)
     setLoading(false)
   }
 
@@ -275,21 +232,41 @@ export default function OnlineBattlePage() {
     let abilityIndex = null
     if (action.startsWith('ability-')) { abilityIndex = Number(action.replace('ability-', '')); rpcAction = `ability-${abilityIndex}` }
     const { data, error: actionError } = await supabase.rpc('process_online_battle_action', { p_room_id: room.id, p_action: rpcAction, p_ability_index: abilityIndex })
-    if (actionError) setError(actionError.message)
-    else setRoom(previous => ({ ...previous, battle_state: data, status: data?.status === 'finished' ? 'finished' : 'active' }))
-    setSelectedAction('basic')
+    if (actionError) setError(actionError.message); else setRoom(previous => ({ ...previous, battle_state: data, status: data?.status === 'finished' ? 'finished' : 'active' }))
+    setSelectedAction('basic'); setLoading(false)
+  }
+
+  async function requestRematch() {
+    if (!room?.id || !user?.id || loading || room.status !== 'finished') return
+    setLoading(true); setError('')
+    const { error: rematchError } = await supabase.from('battle_participants').update({ rematch_status: 'accepted' }).eq('room_id', room.id).eq('user_id', user.id)
+    if (rematchError) setError(rematchError.message)
     setLoading(false)
   }
 
-  async function startAnotherBattle() {
-    if (!room?.id || loading) return
+  async function declineRematch() {
+    if (!room?.id || !user?.id || loading || room.status !== 'finished') return
     setLoading(true); setError('')
-    const { error: participantsError } = await supabase.from('battle_participants').update({ character_id: null }).eq('room_id', room.id)
-    if (participantsError) { setError(participantsError.message); setLoading(false); return }
+    const { error: rematchError } = await supabase.from('battle_participants').update({ rematch_status: 'declined' }).eq('room_id', room.id).eq('user_id', user.id)
+    if (rematchError) setError(rematchError.message)
+    setLoading(false)
+  }
+
+  async function resetForRematch() {
+    if (!room?.id || loading || rematchResetInFlight.current) return
+    if (room.host_user_id !== user?.id || host?.rematch_status !== 'accepted' || guest?.rematch_status !== 'accepted') return
+    rematchResetInFlight.current = true
+    setLoading(true); setError('')
+    const { error: participantsError } = await supabase.from('battle_participants').update({ character_id: null, rematch_status: 'pending' }).eq('room_id', room.id)
+    if (participantsError) {
+      setError(participantsError.message); setLoading(false); rematchResetInFlight.current = false; return
+    }
     const { data, error: roomError } = await supabase.from('battle_rooms').update({ status: 'ready', host_character_id: null, guest_character_id: null, battle_state: null }).eq('id', room.id).eq('status', 'finished').select().single()
-    if (roomError) { setError(roomError.message); setLoading(false); return }
-    setRoom(data); setParticipants(previous => previous.map(participant => ({ ...participant, character_id: null })))
-    setBattleCharacters([]); battleCharacterIdsRef.current = ''; setSelectedCharacterId(null); setSelectedAction('basic'); setLoading(false)
+    if (roomError) {
+      setError(roomError.message); setLoading(false); rematchResetInFlight.current = false; return
+    }
+    setRoom(data); setParticipants(previous => previous.map(participant => ({ ...participant, character_id: null, rematch_status: 'pending' })))
+    setBattleCharacters([]); battleCharacterIdsRef.current = ''; setSelectedCharacterId(null); setSelectedAction('basic'); setLoading(false); rematchResetInFlight.current = false
   }
 
   const host = participants.find(p => p.role === 'host')
@@ -309,98 +286,69 @@ export default function OnlineBattlePage() {
   const turnParticipant = participants.find(p => p.user_id === battleState?.turn_user_id)
   const turnCharacter = turnParticipant ? battleCharacters.find(c => c.id === battleState?.players?.[turnParticipant.user_id]?.character_id) : null
 
+  useEffect(() => {
+    if (!room?.id || room.status !== 'finished' || !host || !guest) return
+    if (host.rematch_status === 'accepted' && guest.rematch_status === 'accepted' && room.host_user_id === user?.id) resetForRematch()
+  }, [room?.id, room?.status, host?.rematch_status, guest?.rematch_status, user?.id])
+
   if (room?.status === 'active' || room?.status === 'finished') {
     const winnerParticipant = participants.find(p => p.user_id === battleState?.winner_user_id)
     const winnerCharacter = winnerParticipant ? battleCharacters.find(c => c.id === battleState?.players?.[winnerParticipant.user_id]?.character_id) : null
     const didWin = Boolean(battleState?.winner_user_id) && battleState.winner_user_id === user?.id
     const didDraw = isFinished && !battleState?.winner_user_id
+    const resultCharacter = myBattleCharacter
+    const myRematchStatus = participants.find(p => p.user_id === user?.id)?.rematch_status || 'pending'
+    const opponent = participants.find(p => p.user_id !== user?.id)
+    const opponentRematchStatus = opponent?.rematch_status || 'pending'
+
+    if (isFinished) {
+      return (
+        <section className="battle-page online-battle-page">
+          <BattleResultScreen
+            result={didWin ? 'victory' : 'defeat'}
+            character={resultCharacter}
+            stats={{ rounds: battleState?.round || 0, damageDealt: 0, damageReceived: 0, criticalHits: 0, abilitiesUsed: 0, healingDone: 0 }}
+            isOnline
+            rematchStatus={myRematchStatus}
+            opponentRematchStatus={opponentRematchStatus}
+            rematchLoading={loading}
+            onRequestRematch={requestRematch}
+            onDeclineRematch={declineRematch}
+            onBack={() => setRoom(null)}
+          />
+        </section>
+      )
+    }
 
     return (
       <section className="battle-page online-battle-page">
         <div className="battle-heading">
-          <div>
-            <p className="eyebrow">Combate online</p>
-            <h1>⚔️ La <span>arena</span></h1>
-            <p>{isFinished ? (didDraw ? 'El combate terminó sin un ganador.' : `Ganador: ${winnerCharacter?.name || 'Jugador'}`) : 'Las acciones se sincronizan entre los dos jugadores.'}</p>
-          </div>
+          <div><p className="eyebrow">Combate online</p><h1>⚔️ La <span>arena</span></h1><p>Las acciones se sincronizan entre los dos jugadores.</p></div>
           <button className="button secondary" type="button" onClick={() => setRoom(null)}>Salir</button>
         </div>
-
         <div className="battle-arena online-arena">
-          <div className="battle-round">
-            <span>ROUND {battleState?.round || 1}</span>
-            <strong>{isFinished ? '¡COMBATE TERMINADO!' : `Turno de ${turnCharacter?.name || (isMyTurn ? 'vos' : 'tu oponente')}`}</strong>
-          </div>
-
+          <div className="battle-round"><span>ROUND {battleState?.round || 1}</span><strong>{`Turno de ${turnCharacter?.name || (isMyTurn ? 'vos' : 'tu oponente')}`}</strong></div>
           <div className="battle-fighters">
-            {host && (
-              <OnlineBattleCharacterCard
-                participant={host}
-                state={battleState?.players?.[host.user_id] || {}}
-                character={battleCharacters.find(c => c.id === battleState?.players?.[host.user_id]?.character_id)}
-                side="left"
-                isMine={host.user_id === user?.id}
-                isActive={host.user_id === battleState?.turn_user_id && !isFinished}
-              />
-            )}
+            {host && <OnlineBattleCharacterCard participant={host} state={battleState?.players?.[host.user_id] || {}} character={battleCharacters.find(c => c.id === battleState?.players?.[host.user_id]?.character_id)} side="left" isMine={host.user_id === user?.id} isActive={host.user_id === battleState?.turn_user_id} />}
             <div className="battle-vs">VS</div>
-            {guest && (
-              <OnlineBattleCharacterCard
-                participant={guest}
-                state={battleState?.players?.[guest.user_id] || {}}
-                character={battleCharacters.find(c => c.id === battleState?.players?.[guest.user_id]?.character_id)}
-                side="right"
-                isMine={guest.user_id === user?.id}
-                isActive={guest.user_id === battleState?.turn_user_id && !isFinished}
-              />
-            )}
+            {guest && <OnlineBattleCharacterCard participant={guest} state={battleState?.players?.[guest.user_id] || {}} character={battleCharacters.find(c => c.id === battleState?.players?.[guest.user_id]?.character_id)} side="right" isMine={guest.user_id === user?.id} isActive={guest.user_id === battleState?.turn_user_id} />}
           </div>
-
-          {!isFinished && (
-            <div className={`battle-action-panel ${!isMyTurn ? 'is-opponent-turn' : ''}`} key={battleState?.turn_user_id}>
-              <p className="eyebrow">Acciones de {myBattleCharacter?.name || 'tu personaje'}</p>
-              <div className="battle-actions">
-                <button className={selectedAction === 'basic' ? 'battle-action active' : 'battle-action'} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('basic')} type="button">
-                  <strong>⚔️ Ataque</strong><span>Ataque básico</span>
-                </button>
-                {myAbilities.map((ability, index) => {
-                  const actionId = `ability-${index}`
-                  return (
-                    <button key={ability.id || actionId} className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} disabled={!isMyTurn || loading || currentEnergy < 25} onClick={() => setSelectedAction(actionId)} type="button">
-                      <strong>✨ {ability.name || `Habilidad ${index + 1}`}</strong><span>25 energía</span>
-                    </button>
-                  )
-                })}
-                <button className={`battle-action battle-action-ultimate ${selectedAction === 'ultimate' ? 'active' : ''} ${currentEnergy >= 100 ? 'is-ready' : ''}`} disabled={!isMyTurn || loading || currentEnergy < 100} onClick={() => setSelectedAction('ultimate')} type="button">
-                  <strong>⚡ {myBattleCharacter?.profile?.ultimateName || 'Técnica definitiva'}</strong><span>{currentEnergy >= 100 ? '¡LISTA!' : `${Math.round(currentEnergy)}% de energía`}</span>
-                </button>
-                <button className={selectedAction === 'defend' ? 'battle-action battle-action-defend active' : 'battle-action battle-action-defend'} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('defend')} type="button">
-                  <strong>🛡️ Defender</strong><span>-50% próximo daño</span>
-                </button>
-              </div>
-              <button className="button battle-attack-button" disabled={!isMyTurn || loading} onClick={() => performOnlineAction()} type="button">
-                {loading ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar técnica definitiva' : selectedAction.startsWith('ability-') ? '✨ Usar habilidad' : '⚔️ Atacar'}
-              </button>
+          <div className={`battle-action-panel ${!isMyTurn ? 'is-opponent-turn' : ''}`} key={battleState?.turn_user_id}>
+            <p className="eyebrow">Acciones de {myBattleCharacter?.name || 'tu personaje'}</p>
+            <div className="battle-actions">
+              <button className={selectedAction === 'basic' ? 'battle-action active' : 'battle-action'} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('basic')} type="button"><strong>⚔️ Ataque</strong><span>Ataque básico</span></button>
+              {myAbilities.map((ability, index) => {
+                const actionId = `ability-${index}`
+                return <button key={ability.id || actionId} className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} disabled={!isMyTurn || loading || currentEnergy < 25} onClick={() => setSelectedAction(actionId)} type="button"><strong>✨ {ability.name || `Habilidad ${index + 1}`}</strong><span>25 energía</span></button>
+              })}
+              <button className={`battle-action battle-action-ultimate ${selectedAction === 'ultimate' ? 'active' : ''} ${currentEnergy >= 100 ? 'is-ready' : ''}`} disabled={!isMyTurn || loading || currentEnergy < 100} onClick={() => setSelectedAction('ultimate')} type="button"><strong>⚡ {myBattleCharacter?.profile?.ultimateName || 'Técnica definitiva'}</strong><span>{currentEnergy >= 100 ? '¡LISTA!' : `${Math.round(currentEnergy)}% de energía`}</span></button>
+              <button className={selectedAction === 'defend' ? 'battle-action battle-action-defend active' : 'battle-action battle-action-defend'} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('defend')} type="button"><strong>🛡️ Defender</strong><span>-50% próximo daño</span></button>
             </div>
-          )}
-
-          {isFinished && (
-            <div className="battle-controls online-result">
-              <div className="battle-winner">
-                <p className="eyebrow">Ganador</p>
-                <h2>🏆 {didDraw ? 'Empate' : winnerCharacter?.name || 'Jugador'}</h2>
-              </div>
-              <button className="button" onClick={startAnotherBattle} disabled={loading} type="button">{loading ? '🔄 Preparando...' : '🔄 Hacer otra batalla'}</button>
-            </div>
-          )}
-
+            <button className="button battle-attack-button" disabled={!isMyTurn || loading} onClick={() => performOnlineAction()} type="button">{loading ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar técnica definitiva' : selectedAction.startsWith('ability-') ? '✨ Usar habilidad' : '⚔️ Atacar'}</button>
+          </div>
           <div className="battle-log online-log">
             <div className="battle-log-header"><p className="eyebrow">Registro del combate</p></div>
-            {(battleState?.log || []).slice().reverse().map(entry => (
-              <div className={`battle-log-entry battle-log-${entry.type || 'attack'}`} data-log-id={entry.id || ''} data-log-type={entry.type || 'attack'} data-actor-user-id={entry.user_id || ''} key={entry.id}>
-                {entry.message || entry.text}
-              </div>
-            ))}
+            {(battleState?.log || []).slice().reverse().map(entry => <div className={`battle-log-entry battle-log-${entry.type || 'attack'}`} data-log-id={entry.id || ''} data-log-type={entry.type || 'attack'} data-actor-user-id={entry.user_id || ''} key={entry.id}>{entry.message || entry.text}</div>)}
           </div>
         </div>
       </section>
@@ -410,38 +358,15 @@ export default function OnlineBattlePage() {
   return (
     <main className="online-battle">
       <header><p className="eyebrow">BATALLAS ONLINE</p><h1>Desafiar a otro jugador</h1><p>Creá una sala o unite con un código.</p></header>
-      {!room && (
-        <section className="online-battle__actions">
-          <button onClick={createRoom} disabled={loading}>⚔️ CREAR SALA</button>
-          <div className="join-card"><h2>UNIRSE A UNA SALA</h2><input value={code} onChange={event => setCode(event.target.value.toUpperCase())} maxLength={5} placeholder="CÓDIGO" /><button onClick={joinRoom} disabled={loading || code.length < 5}>ENTRAR</button></div>
-        </section>
-      )}
+      {!room && <section className="online-battle__actions"><button onClick={createRoom} disabled={loading}>⚔️ CREAR SALA</button><div className="join-card"><h2>UNIRSE A UNA SALA</h2><input value={code} onChange={event => setCode(event.target.value.toUpperCase())} maxLength={5} placeholder="CÓDIGO" /><button onClick={joinRoom} disabled={loading || code.length < 5}>ENTRAR</button></div></section>}
       {error && <p className="online-battle__error">{error}</p>}
-      {room && (
-        <section className="battle-room panel">
-          <div className="room-code"><span>CÓDIGO DE SALA</span><strong>{room.code}</strong></div>
-          <div className="room-status"><span>ESTADO</span><strong>{room.status === 'ready' ? 'SELECCIÓN DE PERSONAJE' : 'ESPERANDO AL OPONENTE...'}</strong></div>
-          <div className="players">
-            <article><span>HOST</span><strong>{hostName}</strong>{host?.character_id && <small>✓ Personaje elegido</small>}</article>
-            <div>VS</div>
-            <article><span>OPONENTE</span><strong>{guestName}</strong>{guest?.character_id && <small>✓ Personaje elegido</small>}</article>
-          </div>
-          {room.status === 'ready' && (
-            <div className="character-select">
-              <div className="character-select__heading"><div><p className="eyebrow">TU COLECCIÓN</p><h2>Elegí tu personaje</h2></div><span>{selectedCharacter ? `Elegido: ${selectedCharacter.name}` : 'Ninguno elegido'}</span></div>
-              <div className="character-grid">
-                {characters.map(character => {
-                  const image = getImage(character)
-                  const selected = character.id === selectedCharacterId
-                  return <button key={character.id} className={`character-card ${selected ? 'is-selected' : ''}`} onClick={() => selectCharacter(character.id)} disabled={loading} type="button">{image ? <img src={image} alt={character.name} /> : <div className="character-card__fallback">{character.name.charAt(0)}</div>}<strong>{character.name}</strong>{selected && <span>✓ ELEGIDO</span>}</button>
-                })}
-              </div>
-              <div className="selection-status">{bothSelected ? '✓ Ambos jugadores eligieron personaje' : 'Esperando la elección del otro jugador...'}</div>
-            </div>
-          )}
-          {bothSelected && <button className="start-button" onClick={startOnlineBattle} disabled={loading || user?.id !== room.host_user_id} type="button">{user?.id === room.host_user_id ? 'COMENZAR BATALLA' : 'ESPERANDO AL HOST...'}</button>}
-        </section>
-      )}
+      {room && <section className="battle-room panel">
+        <div className="room-code"><span>CÓDIGO DE SALA</span><strong>{room.code}</strong></div>
+        <div className="room-status"><span>ESTADO</span><strong>{room.status === 'ready' ? 'SELECCIÓN DE PERSONAJE' : 'ESPERANDO AL OPONENTE...'}</strong></div>
+        <div className="players"><article><span>HOST</span><strong>{hostName}</strong>{host?.character_id && <small>✓ Personaje elegido</small>}</article><div>VS</div><article><span>OPONENTE</span><strong>{guestName}</strong>{guest?.character_id && <small>✓ Personaje elegido</small>}</article></div>
+        {room.status === 'ready' && <div className="character-select"><div className="character-select__heading"><div><p className="eyebrow">TU COLECCIÓN</p><h2>Elegí tu personaje</h2></div><span>{selectedCharacter ? `Elegido: ${selectedCharacter.name}` : 'Ninguno elegido'}</span></div><div className="character-grid">{characters.map(character => { const image = getImage(character); const selected = character.id === selectedCharacterId; return <button key={character.id} className={`character-card ${selected ? 'is-selected' : ''}`} onClick={() => selectCharacter(character.id)} disabled={loading} type="button">{image ? <img src={image} alt={character.name} /> : <div className="character-card__fallback">{character.name.charAt(0)}</div>}<strong>{character.name}</strong>{selected && <span>✓ ELEGIDO</span>}</button> })}</div><div className="selection-status">{bothSelected ? '✓ Ambos jugadores eligieron personaje' : 'Esperando la elección del otro jugador...'}</div></div>}
+        {bothSelected && <button className="start-button" onClick={startOnlineBattle} disabled={loading || user?.id !== room.host_user_id} type="button">{user?.id === room.host_user_id ? 'COMENZAR BATALLA' : 'ESPERANDO AL HOST...'}</button>}
+      </section>}
     </main>
   )
 }
