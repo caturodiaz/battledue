@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext'
 import { useCharacters } from '../hooks/useCharacters'
+import '../styles/Collection.css'
 
 function CollectionPage() {
   const { user } = useAuth()
@@ -45,7 +46,7 @@ function CollectionPage() {
             {unlockedCharacters.map((character) => (
               <article className="collection-card is-unlocked" key={character.id}>
                 <div className="collection-card-image">
-                  {character.image ? <img src={character.image} alt={character.name} /> : <span>{character.name?.charAt(0) || '?'}</span>}
+                  {character.image ? <img src={character.image} alt={character.name} loading="lazy" /> : <span>{character.name?.charAt(0) || '?'}</span>}
                 </div>
                 <div className="collection-card-body">
                   <span className="collection-status">✓ Desbloqueado</span>
@@ -70,7 +71,7 @@ function CollectionPage() {
             {lockedCharacters.map((character) => (
               <article className="collection-card is-locked" key={character.id}>
                 <div className="collection-card-image">
-                  {character.image ? <img src={character.image} alt="" aria-hidden="true" /> : <span>?</span>}
+                  {character.image ? <img src={character.image} alt="" aria-hidden="true" loading="lazy" /> : <span>?</span>}
                   <span className="collection-lock" aria-hidden="true">🔒</span>
                 </div>
                 <div className="collection-card-body">
