@@ -4,6 +4,7 @@ import {
   playDodgeSound,
   playFullHealingSound,
   playVictorySound,
+  playLostBattleSound,
 } from '../battle/audio/battleSounds'
 import '../styles/OnlineBattleEffects.css'
 
@@ -114,7 +115,12 @@ export default function OnlineBattleEffects({ children }) {
       const result = root.querySelector('.online-result')?.textContent?.trim() || ''
       if (result && result !== previousResultRef.current) {
         previousResultRef.current = result
-        if (/ganó/i.test(result)) playVictorySound()
+        if (/ganó/i.test(result)) {
+          playVictorySound()
+          if (!root.querySelector('.online-fighter.is-mine')?.classList.contains('is-victorious')) {
+            playLostBattleSound()
+          }
+        }
       }
 
       const turn = root.querySelector('.room-status strong')?.textContent || ''
