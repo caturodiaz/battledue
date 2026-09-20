@@ -6,6 +6,7 @@ import CollectionPage from './pages/CollectionPage'
 import PlayerProfilePage from './pages/PlayerProfilePage'
 import CombatPage from './pages/CombatPage'
 import AuthPage from './pages/AuthPage'
+import OnlineBattleUltimateBridge from './components/OnlineBattleUltimateBridge'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './App.css'
 import './styles/BattleEvasion.css'
@@ -30,6 +31,7 @@ function AppContent() {
 
   return (
     <div className="app-shell">
+      <OnlineBattleUltimateBridge />
       <header className="site-header">
         <button className="brand" onClick={() => navigateTo('home')} type="button" aria-label="Ir al inicio"><img src={`${import.meta.env.BASE_URL}images/battledue-logo.png`} alt="BattleDue" /></button>
         <button className={`menu-toggle ${menuOpen ? 'is-open' : ''}`} type="button" onClick={() => setMenuOpen((previous) => !previous)} aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={menuOpen}><span /><span /><span /></button>
