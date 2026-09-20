@@ -1,0 +1,407 @@
+/* Multiplayer uses the same visual language and animation primitives as BattlePage. */
+
+.online-arena {
+  display: grid;
+  gap: 24px;
+  position: relative;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.online-fighters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+
+.online-fighter {
+  position: relative;
+  overflow: hidden;
+  border: 3px solid #111;
+  background: #f7f6f1;
+  color: #111;
+  box-shadow: 7px 7px 0 #111;
+  text-align: left;
+  padding: 0;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.online-fighter.is-mine {
+  border-color: #111;
+}
+
+.online-fighter.online-fighter-victorious {
+  animation: characterVictory 1.2s ease-in-out infinite;
+  box-shadow: 10px 10px 0 #28733a;
+}
+
+.online-fighter.online-fighter-defeated {
+  animation: characterDefeat .8s ease-out forwards;
+}
+
+.online-fighter.online-fighter-defeated img {
+  filter: grayscale(.8) brightness(.55);
+}
+
+.online-fighter > span {
+  display: block;
+  margin: 0;
+  padding: 16px 18px 0;
+  color: #a20707;
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.online-fighter > strong {
+  display: block;
+  padding: 5px 18px 10px;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  line-height: .95;
+  letter-spacing: -.04em;
+  text-transform: uppercase;
+}
+
+.online-fighter img {
+  display: block;
+  width: calc(100% - 36px);
+  height: 300px;
+  margin: 0 18px 12px;
+  object-fit: cover;
+  border: 2px solid #111;
+  background: #d7d4cc;
+  transition: filter .2s ease, transform .2s ease;
+}
+
+.online-fighter::after {
+  content: '';
+  display: block;
+  height: 18px;
+  margin: 0 18px 8px;
+  border: 2px solid #111;
+  background: linear-gradient(90deg, #28733a var(--online-hp, 100%), #d7d4cc var(--online-hp, 100%));
+  box-sizing: border-box;
+}
+
+.online-fighter.is-mine::after {
+  background: linear-gradient(90deg, #28733a var(--online-hp, 100%), #d7d4cc var(--online-hp, 100%));
+}
+
+.online-fighter > small {
+  display: block;
+  margin: 0 18px 8px;
+  color: #111;
+  font-size: .63rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.online-fighter > small + small {
+  color: #7b5700;
+}
+
+.online-fighter > em {
+  display: block;
+  margin: 6px 18px 16px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(20, 80, 130, .92);
+  border: 1px solid rgba(120, 215, 255, .85);
+  color: #dff6ff;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-align: center;
+  box-shadow: 0 0 16px rgba(80, 190, 255, .35);
+}
+
+/* The old HP bar remains in the DOM for state updates, but the visual is now the shared BattlePage treatment. */
+.online-fighter .online-battle__hp {
+  display: none;
+}
+
+.online-fighter-hit {
+  animation: characterHit .45s cubic-bezier(.36, 0, .66, -.56) !important;
+}
+
+.online-fighter-hit img {
+  filter: brightness(1.25) saturate(1.25);
+}
+
+.online-fighter-critical {
+  animation: criticalHit .55s ease-out !important;
+}
+
+.online-fighter-critical img {
+  filter: brightness(1.35) saturate(1.4);
+}
+
+.online-fighter-critical::before {
+  content: '💥';
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 5rem;
+  pointer-events: none;
+  animation: criticalExplosion .55s ease-out forwards;
+}
+
+.online-fighter-dodge {
+  animation: characterDodge .5s ease-out !important;
+}
+
+.online-fighter-dodge img {
+  filter: brightness(1.15) blur(.5px);
+}
+
+.online-fighter-defend {
+  animation: defenseShieldPulse 1.4s ease-in-out infinite;
+}
+
+.online-fighter-defend::before {
+  content: '🛡️';
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  top: 54%;
+  transform: translate(-50%, -50%);
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(30, 130, 220, .2);
+  border: 3px solid rgba(110, 210, 255, .85);
+  box-shadow: 0 0 20px rgba(80, 190, 255, .65), 0 0 50px rgba(60, 160, 255, .35), inset 0 0 25px rgba(130, 220, 255, .18);
+  font-size: 48px;
+  pointer-events: none;
+}
+
+.online-fighter-heal {
+  animation: characterVictory 1.2s ease-in-out infinite !important;
+}
+
+.online-fighter-heal img {
+  filter: brightness(1.25) saturate(1.35);
+}
+
+.online-fighter-heal::before {
+  content: '💚 CURACIÓN SÚPER';
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  padding: 10px 15px;
+  background: #174b25;
+  border: 3px solid #111;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  box-shadow: 5px 5px 0 #111;
+  animation: battleNotificationIn .35s cubic-bezier(.22, 1, .36, 1);
+}
+
+.online-fighter-victorious::before {
+  content: '🏆';
+  position: absolute;
+  z-index: 10;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 3rem;
+  pointer-events: none;
+  animation: trophyFloat 1.2s ease-in-out infinite;
+}
+
+.online-your-turn .online-fighter.is-mine {
+  transform: translateY(-5px);
+  box-shadow: 10px 10px 0 #a20707;
+}
+
+.online-your-turn .online-fighter.is-mine > span::after {
+  content: ' ⚔️ TU TURNO';
+  color: #a20707;
+}
+
+.online-actions {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 2px solid #111;
+  background: #f7f6f1;
+  box-shadow: 6px 6px 0 #111;
+}
+
+.online-actions > .eyebrow {
+  margin: 0;
+}
+
+.online-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 0;
+}
+
+.online-action-grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 82px;
+  padding: 14px;
+  border: 2px solid #111;
+  border-radius: 0;
+  background: #fff;
+  color: #111;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+}
+
+.online-action-grid button:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 #111;
+}
+
+.online-action-grid button.is-selected {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+  box-shadow: 4px 4px 0 #a20707;
+}
+
+.online-action-grid button span {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  color: inherit;
+  font-size: .7rem;
+  font-weight: 700;
+  opacity: .8;
+}
+
+.online-action-grid button.ultimate.is-selected {
+  border-color: #ffe05c;
+  background: #a20707;
+  box-shadow: 0 0 18px rgba(255, 215, 70, .45), 5px 5px 0 #111;
+}
+
+.online-action-grid button.defend.is-selected {
+  border-color: rgba(110, 200, 255, 1);
+  background: linear-gradient(135deg, rgba(40, 130, 220, .28), rgba(80, 180, 255, .12));
+  box-shadow: 0 0 0 2px rgba(90, 180, 255, .12), 0 8px 30px rgba(40, 140, 255, .25);
+  color: #111;
+}
+
+.online-actions.is-disabled::after {
+  content: '⌛ TURNO DEL OPONENTE';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 17, 17, .72);
+  color: #fff;
+  font-size: .9rem;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  border: 3px solid #111;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.online-actions {
+  position: relative;
+}
+
+.online-execute-button {
+  width: 100%;
+  min-height: 58px;
+  border: 2px solid #111;
+  background: #a20707;
+  color: #fff;
+  box-shadow: 5px 5px 0 #111;
+  font-weight: 950;
+  letter-spacing: .05em;
+}
+
+.online-result {
+  border: 2px solid #111;
+  background: #f7f6f1;
+  box-shadow: 6px 6px 0 #a20707;
+  color: #111;
+}
+
+.online-result strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+}
+
+.online-result span {
+  display: block;
+  color: #35332f;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.online-log {
+  overflow: hidden;
+  max-height: 260px;
+  padding: 0;
+  border: 2px solid #111;
+  background: #f7f6f1;
+  box-shadow: 6px 6px 0 #111;
+}
+
+.online-log .battle-log-entry {
+  padding: 12px 16px;
+  border-bottom: 1px solid #d5d2ca;
+  color: #35332f;
+  font-size: .82rem;
+  font-weight: 700;
+  animation: battle-log-entry .3s ease both;
+}
+
+.online-log .battle-log-critical {
+  background: #fff0d1;
+  color: #9a5300;
+  font-weight: 950;
+}
+
+.online-log .battle-log-winner {
+  color: #174b25;
+  background: #d5ead8;
+  font-weight: 950;
+}
+
+.online-log .battle-log-miss {
+  color: #666;
+  font-style: italic;
+}
+
+@media (max-width: 850px) {
+  .online-fighters {
+    grid-template-columns: 1fr;
+  }
+
+  .online-fighter img {
+    height: 260px;
+  }
+}
