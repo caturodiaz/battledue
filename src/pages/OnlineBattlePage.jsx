@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import '../styles/OnlineBattle.css'
@@ -31,6 +31,11 @@ export default function OnlineBattlePage() {
   const [selectedAction, setSelectedAction] = useState('basic')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const battleCharactersRef = useRef([])
+
+  useEffect(() => {
+    battleCharactersRef.current = battleCharacters
+  }, [battleCharacters])
 
   async function loadCharacters() {
     if (!user) return
@@ -50,7 +55,7 @@ export default function OnlineBattlePage() {
     else setCharacters(data || [])
   }
 
-  async function refreshRoom(roomId) {
+  async function refreshRoom(roomId, { includeParticipants = true } = {}) {
     const { data, error: roomError } = await supabase
       .from('battle_rooms')
       .select('*')
@@ -58,6 +63,8 @@ export default function OnlineBattlePage() {
       .single()
     if (roomError) { setError(roomError.message); return }
     setRoom(data)
+
+    if (!includeParticipants) return
 
     const { data: participantData, error: participantsError } = await supabase
       .from('battle_participants')
@@ -85,8 +92,19 @@ export default function OnlineBattlePage() {
 
     let realtimeHealthy = false
     let disposed = false
+    let fullRefreshInFlight = false
 
     refreshRoom(room.id)
+
+    const refreshParticipantsAndCharacters = async () => {
+      if (disposed || fullRefreshInFlight) return
+      fullRefreshInFlight = true
+      try {
+        await refreshRoom(room.id, { includeParticipants: true })
+      } finally {
+        fullRefreshInFlight = false
+      }
+    }
 
     const channel = supabase.channel(`battle-room-${room.id}`)
       .on('postgres_changes', {
@@ -107,11 +125,11 @@ export default function OnlineBattlePage() {
         if (payload.new) {
           setRoom(payload.new)
 
-          // The room row already contains battle_state, so don't re-query
-          // battle_rooms on every attack. We only load the participants and
-          // characters once when the battle becomes active.
-          if (payload.new.status === 'active' && battleCharacters.length === 0) {
-            refreshRoom(room.id)
+          // battle_state arrives directly in the Realtime payload. Do not
+          // re-query the room after every attack. Only load the static
+          // participant/character data once when the battle becomes active.
+          if (payload.new.status === 'active' && battleCharactersRef.current.length === 0) {
+            refreshParticipantsAndCharacters()
           }
         }
       })
@@ -121,7 +139,7 @@ export default function OnlineBattlePage() {
         table: 'battle_participants',
         filter: `room_id=eq.${room.id}`,
       }, () => {
-        if (!disposed) refreshRoom(room.id)
+        if (!disposed) refreshParticipantsAndCharacters()
       })
       .subscribe((status, subscriptionError) => {
         realtimeHealthy = status === 'SUBSCRIBED'
@@ -131,10 +149,11 @@ export default function OnlineBattlePage() {
         }
       })
 
-    // Fallback only when Realtime is unavailable. This is deliberately slow:
-    // 10 seconds instead of the previous 1.5 seconds polling loop.
+    // If Realtime is unavailable, poll only battle_rooms. Participants and
+    // characters are static during an active battle and do not need to be
+    // downloaded every 10 seconds.
     const fallbackPoll = window.setInterval(() => {
-      if (!disposed && !realtimeHealthy) refreshRoom(room.id)
+      if (!disposed && !realtimeHealthy) refreshRoom(room.id, { includeParticipants: false })
     }, 10000)
 
     return () => {
