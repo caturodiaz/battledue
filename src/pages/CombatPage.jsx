@@ -4,6 +4,8 @@ import OnlineBattlePage from './OnlineBattlePage'
 import OnlineBattleEffects from './OnlineBattleEffects'
 import './CombatPage.css'
 import '../styles/OnlineBattleLayoutFix.css'
+import '../styles/OnlineBattleSharedVisuals.css'
+import '../styles/OnlineBattleSharedBars.css'
 
 export default function CombatPage() {
   const [mode, setMode] = useState(null)
