@@ -4,8 +4,7 @@ import GamePage from './pages/GamePage'
 import ProfilesPage from './pages/ProfilesPage'
 import CollectionPage from './pages/CollectionPage'
 import PlayerProfilePage from './pages/PlayerProfilePage'
-import BattlePage from './pages/BattlePage'
-import OnlineBattlePage from './pages/OnlineBattlePage'
+import CombatPage from './pages/CombatPage'
 import AuthPage from './pages/AuthPage'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './App.css'
@@ -36,8 +35,7 @@ function AppContent() {
         <nav className={`site-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Navegación principal">
           <button className={page === 'home' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('home')} type="button">Inicio</button>
           <button className={page === 'game' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('game')} type="button">Jugar</button>
-          <button className={page === 'battle' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('battle')} type="button">⚔️ Combate</button>
-          <button className={page === 'online-battle' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('online-battle')} type="button">👥 Batalla online</button>
+          <button className={page === 'combat' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('combat')} type="button">⚔️ Combate</button>
           <button className={page === 'profiles' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('profiles')} type="button">Personajes</button>
           <button className={page === 'collection' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('collection')} type="button">Colección</button>
           <button className={page === 'player-profile' ? 'nav-link active' : 'nav-link'} onClick={() => navigateTo('player-profile')} type="button">Perfil</button>
@@ -47,8 +45,7 @@ function AppContent() {
       <main>
         {page === 'home' && <HomePage onPlay={() => navigateTo('game')} onCharacters={() => navigateTo('profiles')} />}
         {page === 'game' && <GamePage onCharacters={() => navigateTo('profiles')} />}
-        {page === 'battle' && <BattlePage />}
-        {page === 'online-battle' && <OnlineBattlePage />}
+        {page === 'combat' && <CombatPage />}
         {page === 'profiles' && <ProfilesPage />}
         {page === 'collection' && <CollectionPage />}
         {page === 'player-profile' && <PlayerProfilePage />}
