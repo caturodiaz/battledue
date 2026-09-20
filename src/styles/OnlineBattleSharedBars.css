@@ -1,0 +1,21 @@
+.online-fighter::after { display: none; }
+
+.online-fighter .online-battle__hp {
+  display: block;
+  position: relative;
+  height: 18px;
+  margin: 0 18px;
+  border: 2px solid #111;
+  background: #d7d4cc;
+  overflow: hidden;
+}
+
+.online-fighter .online-battle__hp div {
+  height: 100%;
+  background: #28733a;
+  transition: width .65s cubic-bezier(.22, 1, .36, 1);
+}
+
+.online-fighter:not(.is-mine) .online-battle__hp div {
+  background: #a20707;
+}
