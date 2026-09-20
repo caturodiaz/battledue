@@ -4,6 +4,7 @@ import ProfileEditor from '../components/ProfileEditor'
 import { profileDefaults } from '../data/profileDefaults'
 import { useCharacters } from '../hooks/useCharacters'
 import { useAuth } from '../context/AuthContext'
+import '../styles/UnlockSettings.css'
 
 const emptyCharacter = {
   id: '',
