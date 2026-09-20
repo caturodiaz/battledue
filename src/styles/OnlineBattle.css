@@ -257,14 +257,6 @@
   grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr);
 }
 
-.online-battle-page .battle-character.is-defending {
-  transition: box-shadow .2s ease, filter .2s ease;
-}
-
-.online-battle-page .battle-character.is-defending.is-active {
-  transform: translateY(-5px);
-}
-
 .online-battle-notification {
   position: absolute;
 }
