@@ -41,6 +41,48 @@ function isSelfStatusMiss(message) {
   return /inconsciente|aturdido/i.test(message)
 }
 
+function showUltimate(root, actor, logText) {
+  if (!actor) return
+
+  const image = actor.querySelector('img')?.src || ''
+  const name = getFighterName(actor) || 'Jugador'
+  const overlay = document.createElement('div')
+  overlay.className = 'battle-ultimate-overlay'
+
+  const backdrop = document.createElement('div')
+  backdrop.className = 'battle-ultimate-backdrop'
+
+  const content = document.createElement('div')
+  content.className = 'battle-ultimate-content'
+
+  const eyebrow = document.createElement('p')
+  eyebrow.className = 'battle-ultimate-eyebrow'
+  eyebrow.textContent = '⚡ TÉCNICA DEFINITIVA ⚡'
+
+  const title = document.createElement('h2')
+  title.textContent = logText.replace(/^[^:]*:\s*/, '')
+
+  const character = document.createElement('span')
+  character.className = 'battle-ultimate-character'
+  character.textContent = name
+
+  content.append(eyebrow, title, character)
+
+  if (image) {
+    const imageWrap = document.createElement('div')
+    imageWrap.className = 'battle-ultimate-image'
+    const img = document.createElement('img')
+    img.src = image
+    img.alt = name
+    imageWrap.appendChild(img)
+    content.appendChild(imageWrap)
+  }
+
+  overlay.append(backdrop, content)
+  root.appendChild(overlay)
+  window.setTimeout(() => overlay.remove(), 1500)
+}
+
 export default function OnlineBattleEffects({ children }) {
   const rootRef = useRef(null)
   const previousLogIdRef = useRef('')
@@ -55,8 +97,6 @@ export default function OnlineBattleEffects({ children }) {
       const logId = newestLog?.dataset.logId || ''
       const logText = newestLog?.textContent?.trim() || ''
 
-      // A new battle starts with an empty log. Clear the previous action so
-      // a rematch can never replay the last action from the previous battle.
       if (!logId) {
         previousLogIdRef.current = ''
       } else if (logId !== previousLogIdRef.current) {
@@ -70,10 +110,9 @@ export default function OnlineBattleEffects({ children }) {
         if (actionType === 'defend') {
           flash(actor, 'online-fighter-defend', 900)
         } else if (/recupera toda su vida|vida restaurada/i.test(logText)) {
-          flash(actor, 'online-fighter-heal', 1000)
+          flash(actor, 'online-fighter-heal', 1200)
           playFullHealingSound()
         } else if (isDodgeMessage(logText)) {
-          // A status failure belongs to the acting character, not the target.
           if (!isSelfStatusMiss(logText)) {
             flash(target, 'online-fighter-dodge')
             playDodgeSound()
@@ -84,35 +123,7 @@ export default function OnlineBattleEffects({ children }) {
         }
 
         if (/TÉCNICA DEFINITIVA/i.test(logText)) {
-          const image = actor?.querySelector('img')?.src || ''
-          const name = getFighterName(actor) || 'Jugador'
-          const overlay = document.createElement('div')
-          overlay.className = 'online-ultimate-overlay'
-          const backdrop = document.createElement('div')
-          backdrop.className = 'online-ultimate-backdrop'
-          const content = document.createElement('div')
-          content.className = 'online-ultimate-content'
-          const eyebrow = document.createElement('p')
-          eyebrow.textContent = '⚡ TÉCNICA DEFINITIVA ⚡'
-          const title = document.createElement('h2')
-          title.textContent = logText.replace(/^[^:]*:\s*/, '')
-          const character = document.createElement('span')
-          character.textContent = name
-          content.append(eyebrow, title, character)
-          if (image) {
-            const img = document.createElement('img')
-            img.src = image
-            img.alt = name
-            content.appendChild(img)
-          } else {
-            const placeholder = document.createElement('div')
-            placeholder.className = 'online-ultimate-placeholder'
-            placeholder.textContent = '⚡'
-            content.appendChild(placeholder)
-          }
-          overlay.append(backdrop, content)
-          root.appendChild(overlay)
-          window.setTimeout(() => overlay.remove(), 1500)
+          showUltimate(root, actor, logText)
         }
 
         if (/CRÍTICO/i.test(logText)) {
@@ -123,8 +134,29 @@ export default function OnlineBattleEffects({ children }) {
       const result = root.querySelector('.online-result')?.textContent?.trim() || ''
       if (!result) {
         previousResultRef.current = ''
+        getFighters(root).forEach(fighter => {
+          fighter.classList.remove('online-fighter-victorious', 'online-fighter-defeated')
+        })
       } else if (result !== previousResultRef.current) {
         previousResultRef.current = result
+        const fighters = getFighters(root)
+        const winnerText = root.querySelector('.online-result strong')?.textContent?.trim() || ''
+        const winnerCharacterName = root.querySelector('.online-result span')?.textContent?.match(/^(.*?) consiguió la victoria|^(.*?) ganó el combate/i)?.[1] || ''
+        const winner = fighters.find(fighter => winnerCharacterName && getFighterName(fighter) === winnerCharacterName)
+
+        if (winner) {
+          winner.classList.add('online-fighter-victorious')
+          fighters.filter(fighter => fighter !== winner).forEach(fighter => fighter.classList.add('online-fighter-defeated'))
+        } else if (/VICTORIA/i.test(winnerText)) {
+          const mine = root.querySelector('.online-fighter.is-mine')
+          mine?.classList.add('online-fighter-victorious')
+          fighters.filter(fighter => fighter !== mine).forEach(fighter => fighter.classList.add('online-fighter-defeated'))
+        } else if (/DERROTA/i.test(winnerText)) {
+          const mine = root.querySelector('.online-fighter.is-mine')
+          mine?.classList.add('online-fighter-defeated')
+          fighters.filter(fighter => fighter !== mine).forEach(fighter => fighter.classList.add('online-fighter-victorious'))
+        }
+
         if (/ganó/i.test(result)) {
           const myName = root.querySelector('.online-fighter.is-mine strong')?.textContent?.trim() || ''
           if (myName && result.includes(myName)) playVictorySound()
