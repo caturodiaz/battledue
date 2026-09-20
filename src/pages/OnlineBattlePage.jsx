@@ -22,6 +22,21 @@ function getImage(character) {
   return character?.profile?.primaryImage || character?.image || ''
 }
 
+function getOnlineBattleStats(battleState, userId) {
+  const logs = Array.isArray(battleState?.log) ? battleState.log : []
+  const mine = logs.filter(entry => entry?.user_id === userId)
+  const opponent = logs.filter(entry => entry?.user_id && entry.user_id !== userId)
+
+  return {
+    rounds: Math.max(0, Number(battleState?.round || 1) - 1),
+    damageDealt: mine.reduce((total, entry) => total + (Number(entry?.damage) || 0), 0),
+    damageReceived: opponent.reduce((total, entry) => total + (Number(entry?.damage) || 0), 0),
+    criticalHits: mine.filter(entry => entry?.critical === true).length,
+    abilitiesUsed: mine.filter(entry => entry?.type === 'ability' || entry?.type === 'ultimate').length,
+    healingDone: mine.filter(entry => entry?.type === 'heal' || /recupera|curaci[oó]n/i.test(entry?.message || entry?.text || '')).length,
+  }
+}
+
 function OnlineBattleCharacterCard({ character, participant, state, isActive, isMine, side }) {
   const hp = Number(state?.hp || 0)
   const maxHp = Math.max(1, Number(state?.max_hp || getMaxHp(character)))
@@ -32,13 +47,7 @@ function OnlineBattleCharacterCard({ character, participant, state, isActive, is
   const image = getImage(character)
 
   return (
-    <article
-      className={`battle-character battle-character-${side} ${isActive ? 'is-active' : ''} ${state?.defending ? 'is-defending' : ''} ${hp <= 0 ? 'is-defeated' : ''}`}
-      data-user-id={participant.user_id}
-      data-character-id={state?.character_id || ''}
-      data-ultimate-image={character?.profile?.ultimateImage || ''}
-      data-ultimate-name={character?.profile?.ultimateName || 'Técnica definitiva'}
-    >
+    <article className={`battle-character battle-character-${side} ${isActive ? 'is-active' : ''} ${state?.defending ? 'is-defending' : ''} ${hp <= 0 ? 'is-defeated' : ''}`} data-user-id={participant.user_id} data-character-id={state?.character_id || ''} data-ultimate-image={character?.profile?.ultimateImage || ''} data-ultimate-name={character?.profile?.ultimateName || 'Técnica definitiva'}>
       <div className="battle-character-heading">
         <div>
           <p className="battle-side-label">{isMine ? 'VOS' : 'OPONENTE'}</p>
@@ -81,9 +90,11 @@ export default function OnlineBattlePage() {
   const [selectedAction, setSelectedAction] = useState('basic')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [xpReward, setXpReward] = useState(null)
   const battleCharactersRef = useRef([])
   const battleCharacterIdsRef = useRef('')
   const rematchResetInFlight = useRef(false)
+  const rewardRoomRef = useRef(null)
 
   useEffect(() => { battleCharactersRef.current = battleCharacters }, [battleCharacters])
 
@@ -163,8 +174,27 @@ export default function OnlineBattlePage() {
 
   useEffect(() => { if (room?.status === 'ready') loadCharacters() }, [room?.status, user?.id])
 
+  useEffect(() => {
+    const isFinished = room?.status === 'finished' || room?.battle_state?.status === 'finished' || Boolean(room?.battle_state?.winner_user_id)
+    if (!room?.id || !user?.id || !isFinished || rewardRoomRef.current === room.id) return
+    rewardRoomRef.current = room.id
+    let cancelled = false
+    async function awardOnlineXp() {
+      const { data, error: rewardError } = await supabase.rpc('award_online_battle_xp', { p_room_id: room.id })
+      if (cancelled) return
+      if (rewardError) {
+        setError(rewardError.message)
+        return
+      }
+      const reward = Array.isArray(data) ? data[0] : data
+      setXpReward(reward || null)
+    }
+    awardOnlineXp()
+    return () => { cancelled = true }
+  }, [room?.id, room?.status, room?.battle_state?.status, room?.battle_state?.winner_user_id, user?.id])
+
   async function createRoom() {
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setXpReward(null); rewardRoomRef.current = null
     const roomCode = makeRoomCode()
     const { data, error: insertError } = await supabase.from('battle_rooms').insert({ code: roomCode, host_user_id: user.id, status: 'waiting' }).select().single()
     if (insertError) { setError(insertError.message); setLoading(false); return }
@@ -178,7 +208,7 @@ export default function OnlineBattlePage() {
   }
 
   async function joinRoom() {
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setXpReward(null); rewardRoomRef.current = null
     const normalized = code.trim().toUpperCase()
     const { data, error: findError } = await supabase.from('battle_rooms').select('*').eq('code', normalized).eq('status', 'waiting').maybeSingle()
     if (findError || !data) { setError(findError?.message || 'No encontramos una sala disponible con ese código.'); setLoading(false); return }
@@ -266,7 +296,7 @@ export default function OnlineBattlePage() {
       setError(roomError.message); setLoading(false); rematchResetInFlight.current = false; return
     }
     setRoom(data); setParticipants(previous => previous.map(participant => ({ ...participant, character_id: null, rematch_status: 'pending' })))
-    setBattleCharacters([]); battleCharacterIdsRef.current = ''; setSelectedCharacterId(null); setSelectedAction('basic'); setLoading(false); rematchResetInFlight.current = false
+    setBattleCharacters([]); battleCharacterIdsRef.current = ''; setSelectedCharacterId(null); setSelectedAction('basic'); setXpReward(null); rewardRoomRef.current = null; setLoading(false); rematchResetInFlight.current = false
   }
 
   const host = participants.find(p => p.role === 'host')
@@ -292,29 +322,33 @@ export default function OnlineBattlePage() {
   }, [room?.id, room?.status, host?.rematch_status, guest?.rematch_status, user?.id])
 
   if (room?.status === 'active' || room?.status === 'finished') {
-    const winnerParticipant = participants.find(p => p.user_id === battleState?.winner_user_id)
-    const winnerCharacter = winnerParticipant ? battleCharacters.find(c => c.id === battleState?.players?.[winnerParticipant.user_id]?.character_id) : null
     const didWin = Boolean(battleState?.winner_user_id) && battleState.winner_user_id === user?.id
-    const didDraw = isFinished && !battleState?.winner_user_id
-    const resultCharacter = myBattleCharacter
     const myRematchStatus = participants.find(p => p.user_id === user?.id)?.rematch_status || 'pending'
     const opponent = participants.find(p => p.user_id !== user?.id)
     const opponentRematchStatus = opponent?.rematch_status || 'pending'
 
     if (isFinished) {
+      const stats = getOnlineBattleStats(battleState, user?.id)
+      const unlockedId = xpReward?.unlocked_character_ids?.[0]
+      const unlockedCharacter = unlockedId ? characters.find(character => character.id === unlockedId) || battleCharacters.find(character => character.id === unlockedId) : null
       return (
         <section className="battle-page online-battle-page">
           <BattleResultScreen
             result={didWin ? 'victory' : 'defeat'}
-            character={resultCharacter}
-            stats={{ rounds: battleState?.round || 0, damageDealt: 0, damageReceived: 0, criticalHits: 0, abilitiesUsed: 0, healingDone: 0 }}
+            character={myBattleCharacter}
+            xpEarned={xpReward?.experience_gained || 0}
+            currentLevel={xpReward?.new_level || 1}
+            previousLevel={xpReward?.previous_level || xpReward?.new_level || 1}
+            leveledUp={Boolean(xpReward?.leveled_up)}
+            unlockedCharacter={unlockedCharacter}
+            stats={stats}
             isOnline
             rematchStatus={myRematchStatus}
             opponentRematchStatus={opponentRematchStatus}
             rematchLoading={loading}
             onRequestRematch={requestRematch}
             onDeclineRematch={declineRematch}
-            onBack={() => setRoom(null)}
+            onBack={() => { setRoom(null); setXpReward(null); rewardRoomRef.current = null }}
           />
         </section>
       )
