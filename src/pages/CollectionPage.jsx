@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext'
 import { useCharacters } from '../hooks/useCharacters'
+import { usePlayerProgress } from '../hooks/usePlayerProgress'
 import '../styles/Collection.css'
 
 function getCharacterImage(character) {
@@ -15,6 +16,15 @@ function CollectionPage() {
     loading,
     error,
   } = useCharacters(user?.id)
+  const {
+    level,
+    experience,
+    nextLevelXp,
+    percentage,
+    xpToNextLevel,
+    progress: playerProgress,
+    loading: progressLoading,
+  } = usePlayerProgress(user?.id)
 
   if (loading) {
     return <section className="collection-page"><div className="empty-state"><h2>Cargando colección...</h2><p>Estamos comprobando qué personajes tenés desbloqueados.</p></div></section>
@@ -37,6 +47,44 @@ function CollectionPage() {
           <span>/ {allCharacters.length} desbloqueados</span>
         </div>
       </div>
+
+      <section className="player-progress-card" aria-label="Progreso del jugador">
+        <div className="player-progress-main">
+          <div className="player-level-badge">
+            <span>NIVEL</span>
+            <strong>{progressLoading ? '—' : level}</strong>
+          </div>
+
+          <div className="player-progress-info">
+            <div className="player-progress-heading">
+              <div>
+                <p className="eyebrow">Progresión</p>
+                <h2>Tu experiencia</h2>
+              </div>
+              <strong>{experience} XP</strong>
+            </div>
+
+            <div className="player-xp-track" aria-hidden="true">
+              <div className="player-xp-fill" style={{ width: `${percentage}%` }} />
+            </div>
+
+            <div className="player-xp-meta">
+              {nextLevelXp === null ? (
+                <span>🏆 Nivel máximo alcanzado</span>
+              ) : (
+                <span>{xpToNextLevel} XP para nivel {level + 1}</span>
+              )}
+              <span>{percentage}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="player-progress-stats">
+          <div><strong>{playerProgress?.battles || 0}</strong><span>Batallas</span></div>
+          <div><strong>{playerProgress?.wins || 0}</strong><span>Victorias</span></div>
+          <div><strong>{playerProgress?.losses || 0}</strong><span>Derrotas</span></div>
+        </div>
+      </section>
 
       <div className="collection-section">
         <div className="collection-section-heading">
