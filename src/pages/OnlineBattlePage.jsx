@@ -291,14 +291,47 @@ export default function OnlineBattlePage() {
     setLoading(false)
   }
 
-  function startAnotherBattle() {
-    setRoom(null)
-    setParticipants([])
+  async function startAnotherBattle() {
+    if (!room?.id || loading) return
+
+    setLoading(true)
+    setError('')
+
+    const { error: participantsError } = await supabase
+      .from('battle_participants')
+      .update({ character_id: null })
+      .eq('room_id', room.id)
+
+    if (participantsError) {
+      setError(participantsError.message)
+      setLoading(false)
+      return
+    }
+
+    const { data, error: roomError } = await supabase
+      .from('battle_rooms')
+      .update({
+        status: 'ready',
+        host_character_id: null,
+        guest_character_id: null,
+        battle_state: null,
+      })
+      .eq('id', room.id)
+      .eq('status', 'finished')
+      .select()
+      .single()
+
+    if (roomError) {
+      setError(roomError.message)
+      setLoading(false)
+      return
+    }
+
+    setRoom(data)
+    setParticipants(previous => previous.map(participant => ({ ...participant, character_id: null })))
     setBattleCharacters([])
     setSelectedCharacterId(null)
     setSelectedAction('basic')
-    setCode('')
-    setError('')
     setLoading(false)
   }
 
@@ -370,7 +403,7 @@ export default function OnlineBattlePage() {
             <strong>{didDraw ? '🤝 EMPATE' : didWin ? '🏆 ¡VICTORIA!' : '💥 DERROTA'}</strong>
             <span>{didDraw ? 'No hubo un ganador en este combate.' : didWin ? `${winnerCharacter?.name || 'Tu personaje'} consiguió la victoria.` : `${winnerCharacter?.name || 'El oponente'} ganó el combate.`}</span>
             <div className="online-result__actions">
-              <button className="start-button" onClick={startAnotherBattle} type="button">🔄 HACER OTRA BATALLA</button>
+              <button className="start-button" onClick={startAnotherBattle} disabled={loading} type="button">{loading ? '🔄 PREPARANDO...' : '🔄 HACER OTRA BATALLA'}</button>
             </div>
           </div>
         )}
