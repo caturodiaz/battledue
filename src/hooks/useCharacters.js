@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   addCharacter,
   deleteCharacter,
@@ -44,16 +44,18 @@ export function useCharacters() {
         }
 
         if (isMounted) {
-          setAllCharacters(data)
+          setAllCharacters(data || [])
           setUnlockedCharacterIds(
             new Set((unlockResult.data || []).map((item) => item.character_id)),
           )
         }
-      } catch (error) {
-        console.error('Error cargando personajes:', error)
+      } catch (loadError) {
+        console.error('Error cargando personajes:', loadError)
 
         if (isMounted) {
-          setError(error)
+          setError(loadError)
+          setAllCharacters([])
+          setUnlockedCharacterIds(new Set())
         }
       } finally {
         if (isMounted) {
@@ -79,11 +81,14 @@ export function useCharacters() {
       if (createdCharacter?.id && user?.id) {
         const { error: unlockError } = await supabase
           .from('character_unlocks')
-          .insert({
-            user_id: user.id,
-            character_id: createdCharacter.id,
-            source: 'admin',
-          })
+          .upsert(
+            {
+              user_id: user.id,
+              character_id: createdCharacter.id,
+              source: 'admin',
+            },
+            { onConflict: 'user_id,character_id' },
+          )
 
         if (unlockError) {
           throw unlockError
@@ -97,13 +102,11 @@ export function useCharacters() {
       }
 
       setAllCharacters(updatedCharacters)
-      return updatedCharacters.filter((item) =>
-        unlockedCharacterIds.has(item.id) || item.id === createdCharacter?.id,
-      )
-    } catch (error) {
-      console.error('Error creando personaje:', error)
-      setError(error)
-      throw error
+      return createdCharacter || updatedCharacters[updatedCharacters.length - 1]
+    } catch (createError) {
+      console.error('Error creando personaje:', createError)
+      setError(createError)
+      throw createError
     }
   }
 
@@ -111,11 +114,11 @@ export function useCharacters() {
     try {
       const updatedCharacters = await updateCharacter(id, changes)
       setAllCharacters(updatedCharacters)
-      return updatedCharacters.filter((item) => unlockedCharacterIds.has(item.id))
-    } catch (error) {
-      console.error('Error editando personaje:', error)
-      setError(error)
-      throw error
+      return updatedCharacters.find((item) => item.id === id)
+    } catch (editError) {
+      console.error('Error editando personaje:', editError)
+      setError(editError)
+      throw editError
     }
   }
 
@@ -128,11 +131,11 @@ export function useCharacters() {
         next.delete(id)
         return next
       })
-      return updatedCharacters.filter((item) => unlockedCharacterIds.has(item.id) && item.id !== id)
-    } catch (error) {
-      console.error('Error eliminando personaje:', error)
-      setError(error)
-      throw error
+      return updatedCharacters
+    } catch (removeError) {
+      console.error('Error eliminando personaje:', removeError)
+      setError(removeError)
+      throw removeError
     }
   }
 
@@ -140,22 +143,31 @@ export function useCharacters() {
     try {
       const updatedCharacters = await replaceCharacters(items)
       setAllCharacters(updatedCharacters)
-      return updatedCharacters.filter((item) => unlockedCharacterIds.has(item.id))
-    } catch (error) {
-      console.error('Error importando personajes:', error)
-      setError(error)
-      throw error
+      return updatedCharacters
+    } catch (importError) {
+      console.error('Error importando personajes:', importError)
+      setError(importError)
+      throw importError
     }
   }
 
-  const unlockedCharacters = allCharacters.filter((character) =>
-    unlockedCharacterIds.has(character.id),
+  const unlockedCharacters = useMemo(
+    () => allCharacters.filter((character) => unlockedCharacterIds.has(character.id)),
+    [allCharacters, unlockedCharacterIds],
+  )
+
+  const lockedCharacters = useMemo(
+    () => allCharacters.filter((character) => !unlockedCharacterIds.has(character.id)),
+    [allCharacters, unlockedCharacterIds],
   )
 
   return {
-    characters: unlockedCharacters,
+    // `characters` remains the complete catalog so the existing character
+    // management UI does not lose records when unlocks are introduced.
+    characters: allCharacters,
     allCharacters,
     unlockedCharacters,
+    lockedCharacters,
     unlockedCharacterIds,
     isLoading,
     error,
