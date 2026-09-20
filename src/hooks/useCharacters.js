@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext'
 
 export function useCharacters() {
   const { user } = useAuth()
-  const [characters, setCharacters] = useState([])
+  const [allCharacters, setAllCharacters] = useState([])
   const [unlockedCharacterIds, setUnlockedCharacterIds] = useState(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -21,7 +21,7 @@ export function useCharacters() {
 
     async function loadCharacters() {
       if (!user?.id) {
-        setCharacters([])
+        setAllCharacters([])
         setUnlockedCharacterIds(new Set())
         setIsLoading(false)
         return
@@ -44,7 +44,7 @@ export function useCharacters() {
         }
 
         if (isMounted) {
-          setCharacters(data)
+          setAllCharacters(data)
           setUnlockedCharacterIds(
             new Set((unlockResult.data || []).map((item) => item.character_id)),
           )
@@ -73,7 +73,7 @@ export function useCharacters() {
     try {
       const updatedCharacters = await addCharacter(character)
       const createdCharacter = updatedCharacters.find(
-        (item) => !characters.some((current) => current.id === item.id),
+        (item) => !allCharacters.some((current) => current.id === item.id),
       )
 
       if (createdCharacter?.id && user?.id) {
@@ -82,7 +82,7 @@ export function useCharacters() {
           .insert({
             user_id: user.id,
             character_id: createdCharacter.id,
-            source: 'legacy',
+            source: 'admin',
           })
 
         if (unlockError) {
@@ -96,8 +96,10 @@ export function useCharacters() {
         })
       }
 
-      setCharacters(updatedCharacters)
-      return updatedCharacters
+      setAllCharacters(updatedCharacters)
+      return updatedCharacters.filter((item) =>
+        unlockedCharacterIds.has(item.id) || item.id === createdCharacter?.id,
+      )
     } catch (error) {
       console.error('Error creando personaje:', error)
       setError(error)
@@ -108,8 +110,8 @@ export function useCharacters() {
   const editCharacter = async (id, changes) => {
     try {
       const updatedCharacters = await updateCharacter(id, changes)
-      setCharacters(updatedCharacters)
-      return updatedCharacters
+      setAllCharacters(updatedCharacters)
+      return updatedCharacters.filter((item) => unlockedCharacterIds.has(item.id))
     } catch (error) {
       console.error('Error editando personaje:', error)
       setError(error)
@@ -120,13 +122,13 @@ export function useCharacters() {
   const removeCharacter = async (id) => {
     try {
       const updatedCharacters = await deleteCharacter(id)
-      setCharacters(updatedCharacters)
+      setAllCharacters(updatedCharacters)
       setUnlockedCharacterIds((current) => {
         const next = new Set(current)
         next.delete(id)
         return next
       })
-      return updatedCharacters
+      return updatedCharacters.filter((item) => unlockedCharacterIds.has(item.id) && item.id !== id)
     } catch (error) {
       console.error('Error eliminando personaje:', error)
       setError(error)
@@ -137,8 +139,8 @@ export function useCharacters() {
   const importCharacters = async (items) => {
     try {
       const updatedCharacters = await replaceCharacters(items)
-      setCharacters(updatedCharacters)
-      return updatedCharacters
+      setAllCharacters(updatedCharacters)
+      return updatedCharacters.filter((item) => unlockedCharacterIds.has(item.id))
     } catch (error) {
       console.error('Error importando personajes:', error)
       setError(error)
@@ -146,12 +148,13 @@ export function useCharacters() {
     }
   }
 
-  const unlockedCharacters = characters.filter((character) =>
+  const unlockedCharacters = allCharacters.filter((character) =>
     unlockedCharacterIds.has(character.id),
   )
 
   return {
-    characters,
+    characters: unlockedCharacters,
+    allCharacters,
     unlockedCharacters,
     unlockedCharacterIds,
     isLoading,
