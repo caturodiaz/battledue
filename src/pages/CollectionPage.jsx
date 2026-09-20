@@ -2,6 +2,20 @@ import { useAuth } from '../context/AuthContext'
 import { useCharacters } from '../hooks/useCharacters'
 import '../styles/Collection.css'
 
+function getCharacterImage(character) {
+  if (character.image) {
+    return character.image
+  }
+
+  const galleryImages = character.profile?.galleryImages
+  if (Array.isArray(galleryImages) && galleryImages.length > 0) {
+    const firstImage = galleryImages[0]
+    return typeof firstImage === 'string' ? firstImage : firstImage?.url || ''
+  }
+
+  return ''
+}
+
 function CollectionPage() {
   const { user } = useAuth()
   const {
@@ -43,18 +57,21 @@ function CollectionPage() {
           <div className="empty-state"><h3>Todavía no tenés personajes desbloqueados</h3></div>
         ) : (
           <div className="collection-grid">
-            {unlockedCharacters.map((character) => (
-              <article className="collection-card is-unlocked" key={character.id}>
-                <div className="collection-card-image">
-                  {character.image ? <img src={character.image} alt={character.name} loading="lazy" /> : <span>{character.name?.charAt(0) || '?'}</span>}
-                </div>
-                <div className="collection-card-body">
-                  <span className="collection-status">✓ Desbloqueado</span>
-                  <h3>{character.name}</h3>
-                  <p>{character.species || 'Personaje de BattleDue'}</p>
-                </div>
-              </article>
-            ))}
+            {unlockedCharacters.map((character) => {
+              const image = getCharacterImage(character)
+              return (
+                <article className="collection-card is-unlocked" key={character.id}>
+                  <div className="collection-card-image">
+                    {image ? <img src={image} alt={character.name} loading="lazy" /> : <span>{character.name?.charAt(0) || '?'}</span>}
+                  </div>
+                  <div className="collection-card-body">
+                    <span className="collection-status">✓ Desbloqueado</span>
+                    <h3>{character.name}</h3>
+                    <p>{character.species || 'Personaje de BattleDue'}</p>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         )}
       </div>
@@ -68,19 +85,22 @@ function CollectionPage() {
           <div className="collection-empty-locked"><h3>Tenés todo el catálogo actual</h3><p>Los próximos personajes podrán tener condiciones especiales de desbloqueo.</p></div>
         ) : (
           <div className="collection-grid">
-            {lockedCharacters.map((character) => (
-              <article className="collection-card is-locked" key={character.id}>
-                <div className="collection-card-image">
-                  {character.image ? <img src={character.image} alt="" aria-hidden="true" loading="lazy" /> : <span>?</span>}
-                  <span className="collection-lock" aria-hidden="true">🔒</span>
-                </div>
-                <div className="collection-card-body">
-                  <span className="collection-status">🔒 Bloqueado</span>
-                  <h3>{character.name}</h3>
-                  <p>La condición de desbloqueo se definirá próximamente.</p>
-                </div>
-              </article>
-            ))}
+            {lockedCharacters.map((character) => {
+              const image = getCharacterImage(character)
+              return (
+                <article className="collection-card is-locked" key={character.id}>
+                  <div className="collection-card-image">
+                    {image ? <img src={image} alt="" aria-hidden="true" loading="lazy" /> : <span>?</span>}
+                    <span className="collection-lock" aria-hidden="true">🔒</span>
+                  </div>
+                  <div className="collection-card-body">
+                    <span className="collection-status">🔒 Bloqueado</span>
+                    <h3>{character.name}</h3>
+                    <p>La condición de desbloqueo se definirá próximamente.</p>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         )}
       </div>
