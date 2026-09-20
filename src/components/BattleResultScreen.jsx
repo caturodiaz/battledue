@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './BattleResultScreen.css'
 
 function formatNumber(value) {
@@ -29,11 +29,22 @@ export default function BattleResultScreen({
   const opponentDeclined = isOnline && opponentRematchStatus === 'declined'
   const alreadyDeclined = isOnline && rematchStatus === 'declined'
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
   return (
-    <section className={`battle-result-stage battle-result-${isVictory ? 'victory' : 'defeat'}`}>
-      <div className="battle-result-summary">
+    <section className={`battle-result-stage battle-result-${isVictory ? 'victory' : 'defeat'}`} aria-label="Resultado del combate">
+      <div className="battle-result-backdrop" aria-hidden="true" />
+
+      <div className="battle-result-summary" role="dialog" aria-modal="true" aria-labelledby="battle-result-summary-title">
+        <div className="battle-result-impact" aria-hidden="true">{isVictory ? '🏆' : '💀'}</div>
         <p className="eyebrow">Combate terminado</p>
-        <h1>{isVictory ? '🏆 VICTORIA' : '💀 DERROTA'}</h1>
+        <h1 id="battle-result-summary-title">{isVictory ? 'VICTORIA' : 'DERROTA'}</h1>
         <p>{isVictory ? 'Has ganado el combate.' : 'Esta vez no fue suficiente. El combate ha terminado.'}</p>
         {character && (
           <div className="battle-result-summary-character">
