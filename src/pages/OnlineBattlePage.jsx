@@ -82,14 +82,64 @@ export default function OnlineBattlePage() {
 
   useEffect(() => {
     if (!room?.id) return
+
+    let realtimeHealthy = false
+    let disposed = false
+
     refreshRoom(room.id)
+
     const channel = supabase.channel(`battle-room-${room.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` }, () => refreshRoom(room.id))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_participants', filter: `room_id=eq.${room.id}` }, () => refreshRoom(room.id))
-      .subscribe()
-    const poll = window.setInterval(() => refreshRoom(room.id), 1500)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'battle_rooms',
+        filter: `id=eq.${room.id}`,
+      }, payload => {
+        if (disposed) return
+
+        if (payload.eventType === 'DELETE') {
+          setRoom(null)
+          setParticipants([])
+          setBattleCharacters([])
+          return
+        }
+
+        if (payload.new) {
+          setRoom(payload.new)
+
+          // The room row already contains battle_state, so don't re-query
+          // battle_rooms on every attack. We only load the participants and
+          // characters once when the battle becomes active.
+          if (payload.new.status === 'active' && battleCharacters.length === 0) {
+            refreshRoom(room.id)
+          }
+        }
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'battle_participants',
+        filter: `room_id=eq.${room.id}`,
+      }, () => {
+        if (!disposed) refreshRoom(room.id)
+      })
+      .subscribe((status, subscriptionError) => {
+        realtimeHealthy = status === 'SUBSCRIBED'
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('Supabase Realtime no disponible para la sala:', subscriptionError)
+        }
+      })
+
+    // Fallback only when Realtime is unavailable. This is deliberately slow:
+    // 10 seconds instead of the previous 1.5 seconds polling loop.
+    const fallbackPoll = window.setInterval(() => {
+      if (!disposed && !realtimeHealthy) refreshRoom(room.id)
+    }, 10000)
+
     return () => {
-      window.clearInterval(poll)
+      disposed = true
+      window.clearInterval(fallbackPoll)
       supabase.removeChannel(channel)
     }
   }, [room?.id])
