@@ -15,18 +15,9 @@
   line-height: 0.95;
 }
 
-.battle-result-victory .battle-result-header h1 {
-  color: var(--accent, #b42d24);
-}
-
-.battle-result-defeat .battle-result-header h1 {
-  color: #222;
-}
-
-.battle-result-header p:last-child {
-  color: #666;
-  font-size: 18px;
-}
+.battle-result-victory .battle-result-header h1 { color: var(--accent, #b42d24); }
+.battle-result-defeat .battle-result-header h1 { color: #222; }
+.battle-result-header p:last-child { color: #666; font-size: 18px; }
 
 .battle-result-character {
   display: flex;
@@ -47,11 +38,7 @@
   flex: 0 0 130px;
 }
 
-.battle-result-character-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.battle-result-character-image img { width: 100%; height: 100%; object-fit: cover; }
 
 .battle-result-label {
   display: block;
@@ -61,10 +48,7 @@
   color: #b42d24;
 }
 
-.battle-result-character h2 {
-  margin: 6px 0 0;
-  font-size: 38px;
-}
+.battle-result-character h2 { margin: 6px 0 0; font-size: 38px; }
 
 .battle-result-progression {
   display: grid;
@@ -82,18 +66,9 @@
 }
 
 .battle-result-xp strong,
-.battle-result-level strong {
-  display: block;
-  font-size: 34px;
-  margin-top: 6px;
-}
+.battle-result-level strong { display: block; font-size: 34px; margin-top: 6px; }
 
-.battle-result-level-up {
-  display: block;
-  margin-top: 10px;
-  font-weight: 800;
-  color: #b42d24;
-}
+.battle-result-level-up { display: block; margin-top: 10px; font-weight: 800; color: #b42d24; }
 
 .battle-result-stats {
   display: grid;
@@ -102,25 +77,9 @@
   margin-bottom: 28px;
 }
 
-.battle-result-stats > div {
-  border: 2px solid #111;
-  background: #fff;
-  padding: 18px;
-  text-align: center;
-}
-
-.battle-result-stats strong {
-  display: block;
-  font-size: 28px;
-}
-
-.battle-result-stats span {
-  display: block;
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
+.battle-result-stats > div { border: 2px solid #111; background: #fff; padding: 18px; text-align: center; }
+.battle-result-stats strong { display: block; font-size: 28px; }
+.battle-result-stats span { display: block; margin-top: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; }
 
 .battle-result-unlock {
   border: 3px solid #b42d24;
@@ -130,43 +89,48 @@
   box-shadow: 6px 6px 0 #111;
 }
 
-.battle-result-unlock > div {
+.battle-result-unlock > div { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+.battle-result-unlock img { width: 72px; height: 72px; object-fit: cover; border: 2px solid #111; }
+.battle-result-unlock strong { font-size: 24px; }
+
+.battle-result-rematch {
+  border: 3px solid #111;
+  background: #f8f6ef;
+  box-shadow: 6px 6px 0 #111;
+  padding: 24px;
+  margin: 0 auto 20px;
+  text-align: center;
+}
+
+.battle-result-rematch-heading h2 { margin: 8px 0 0; font-size: clamp(24px, 4vw, 34px); }
+.battle-result-rematch-status { margin: 16px 0 0; font-weight: 700; color: #555; }
+
+.battle-result-rematch-actions {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 12px;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
 }
 
-.battle-result-unlock img {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-  border: 2px solid #111;
-}
+.battle-result-rematch-actions .button { min-width: 240px; }
+.battle-result-rematch-accept { background: #b42d24; color: #fff; }
 
-.battle-result-unlock strong {
-  font-size: 24px;
-}
-
-.battle-result-back {
+.battle-result-back,
+.battle-result-leave {
   display: block;
   width: min(420px, 100%);
   margin: 0 auto;
   padding: 16px 24px;
 }
 
+.battle-result-leave { margin-top: 12px; }
+
 @media (max-width: 700px) {
-  .battle-result {
-    padding: 32px 16px 48px;
-  }
-
-  .battle-result-character {
-    flex-direction: column;
-    text-align: center;
-  }
-
+  .battle-result { padding: 32px 16px 48px; }
+  .battle-result-character { flex-direction: column; text-align: center; }
   .battle-result-progression,
-  .battle-result-stats {
-    grid-template-columns: 1fr;
-  }
+  .battle-result-stats { grid-template-columns: 1fr; }
+  .battle-result-rematch-actions { flex-direction: column; }
+  .battle-result-rematch-actions .button { width: 100%; }
 }
