@@ -24,6 +24,7 @@ import {
 const BASE_HP = 100
 const MAX_ENERGY = 100
 const DEFENSE_DAMAGE_REDUCTION = 0.5
+const BATTLE_FINISH_DELAY = 2200
 
 function getCharacterImage(character) {
   return character?.profile?.primaryImage || character?.image || ''
@@ -140,6 +141,7 @@ function BattlePage() {
   const [battleLog, setBattleLog] = useState([])
   const [winnerId, setWinnerId] = useState('')
   const [isBattleFinished, setIsBattleFinished] = useState(false)
+  const [battlePhase, setBattlePhase] = useState('setup')
   const [isProcessingTurn, setIsProcessingTurn] = useState(false)
   const [isEnemyThinking, setIsEnemyThinking] = useState(false)
   const [selectedAction, setSelectedAction] = useState('basic')
@@ -151,6 +153,7 @@ function BattlePage() {
   const [ultimateAnimation, setUltimateAnimation] = useState(null)
   const performActionRef = useRef(null)
   const processedTurnRef = useRef(null)
+  const finishBattleTimeoutRef = useRef(null)
 
   const characterA = useMemo(() => characters.find(character => character.id === characterAId), [characters, characterAId])
   const characterB = useMemo(() => characters.find(character => character.id === characterBId), [characters, characterBId])
@@ -171,9 +174,9 @@ function BattlePage() {
   }, [characters, characterAId, characterBId])
 
   useEffect(() => {
-    if (!currentAttacker || !battleStarted) return
+    if (!currentAttacker || !battleStarted || battlePhase !== 'fighting') return
     setSelectedAction('basic')
-  }, [currentAttackerId, battleStarted, currentAttacker])
+  }, [currentAttackerId, battleStarted, currentAttacker, battlePhase])
 
   useEffect(() => {
     if (!battleNotification) return
@@ -181,13 +184,39 @@ function BattlePage() {
     return () => clearTimeout(timeout)
   }, [battleNotification])
 
+  useEffect(() => () => {
+    if (finishBattleTimeoutRef.current) clearTimeout(finishBattleTimeoutRef.current)
+  }, [])
+
   function addLog(text, type = 'attack', notification = null) {
     setBattleLog(previousLog => [...previousLog, { id: crypto.randomUUID(), type, text }])
     if (notification) setBattleNotification({ id: crypto.randomUUID(), ...notification })
   }
 
+  function finishBattle(winner, loser, reason = '') {
+    if (!winner || !loser) return
+    if (finishBattleTimeoutRef.current) clearTimeout(finishBattleTimeoutRef.current)
+    setWinnerId(winner.id)
+    setBattlePhase('finishing')
+    setIsProcessingTurn(true)
+    setIsEnemyThinking(false)
+    if (winner.id === playerId) playVictorySound(); else playLostBattleSound()
+    addLog(
+      reason || `🏆 ¡${winner.name} gana el combate!`,
+      'winner',
+      { icon: '🏆', title: '¡COMBATE TERMINADO!', text: `${winner.name} es el ganador`, type: 'winner' },
+    )
+    finishBattleTimeoutRef.current = setTimeout(() => {
+      setIsBattleFinished(true)
+      setBattlePhase('result')
+      setIsProcessingTurn(false)
+      finishBattleTimeoutRef.current = null
+    }, BATTLE_FINISH_DELAY)
+  }
+
   function startBattle() {
     if (!characterA || !characterB || characterA.id === characterB.id) return
+    if (finishBattleTimeoutRef.current) clearTimeout(finishBattleTimeoutRef.current)
     const maxHpA = getMaxHp(characterA)
     const maxHpB = getMaxHp(characterB)
     const [firstAttacker] = getTurnOrder(characterA, characterB)
@@ -201,6 +230,7 @@ function BattlePage() {
     setBattleNotification({ id: crypto.randomUUID(), icon: '⚔️', title: '¡COMIENZA EL COMBATE!', text: `${firstAttacker.name} tiene la iniciativa`, type: 'system' })
     setWinnerId('')
     setIsBattleFinished(false)
+    setBattlePhase('fighting')
     setIsProcessingTurn(false)
     setIsEnemyThinking(false)
     setSelectedAction('basic')
@@ -210,6 +240,8 @@ function BattlePage() {
   }
 
   function resetBattle() {
+    if (finishBattleTimeoutRef.current) clearTimeout(finishBattleTimeoutRef.current)
+    finishBattleTimeoutRef.current = null
     setBattleStarted(false)
     setTurn(0)
     setCurrentAttackerId('')
@@ -220,6 +252,7 @@ function BattlePage() {
     setBattleLog([])
     setWinnerId('')
     setIsBattleFinished(false)
+    setBattlePhase('setup')
     setIsProcessingTurn(false)
     setIsEnemyThinking(false)
     setSelectedAction('basic')
@@ -229,7 +262,7 @@ function BattlePage() {
   }
 
   async function performAction(actionOverride = null) {
-    if (!battleStarted || isBattleFinished || isProcessingTurn || !currentAttacker || !currentDefender) return
+    if (!battleStarted || isBattleFinished || battlePhase !== 'fighting' || isProcessingTurn || !currentAttacker || !currentDefender) return
     const action = actionOverride || selectedAction
     if (typeof action !== 'string') { console.error('⚠️ Acción inválida:', action); return }
 
@@ -250,12 +283,11 @@ function BattlePage() {
       startOfTurnResult.messages.forEach(message => addLog(message.text, 'status', { icon: message.type === 'bleeding' ? '🩸' : '⚠️', title: '¡ESTADO!', text: message.text, type: 'status' }))
       const currentHpAfterState = Math.max(0, (hp[currentAttacker.id] || 0) + startOfTurnResult.hpChange)
       if (currentHpAfterState <= 0) {
-        const winnerId = currentDefender.id
-        setWinnerId(winnerId)
-        if (winnerId === playerId) playVictorySound(); else playLostBattleSound()
-        setIsBattleFinished(true)
-        setIsProcessingTurn(false)
-        addLog(`🏆 ¡${currentDefender.name} gana el combate! ${currentAttacker.name} cayó por efecto de estado.`, 'winner', { icon: '🏆', title: '¡COMBATE TERMINADO!', text: `${currentDefender.name} es el ganador`, type: 'winner' })
+        finishBattle(
+          currentDefender,
+          currentAttacker,
+          `🏆 ¡${currentDefender.name} gana el combate! ${currentAttacker.name} cayó por efecto de estado.`,
+        )
         return
       }
     }
@@ -392,12 +424,7 @@ function BattlePage() {
       const newHp = Math.max(0, currentHp - result.damage)
       setHp(previousHp => ({ ...previousHp, [currentDefender.id]: newHp }))
       if (newHp <= 0) {
-        const winnerId = currentAttacker.id
-        setWinnerId(winnerId)
-        setIsBattleFinished(true)
-        if (winnerId === playerId) playVictorySound(); else playLostBattleSound()
-        addLog(`🏆 ¡${currentAttacker.name} gana el combate!`, 'winner', { icon: '🏆', title: '¡COMBATE TERMINADO!', text: `${currentAttacker.name} es el ganador`, type: 'winner' })
-        setTimeout(() => setIsProcessingTurn(false), 350)
+        finishBattle(currentAttacker, currentDefender)
         return
       }
     }
@@ -410,7 +437,7 @@ function BattlePage() {
   performActionRef.current = performAction
 
   useEffect(() => {
-    if (!battleStarted || isBattleFinished || isProcessingTurn || !currentAttacker || !currentDefender) return
+    if (!battleStarted || isBattleFinished || battlePhase !== 'fighting' || isProcessingTurn || !currentAttacker || !currentDefender) return
     if (currentAttacker.id !== enemyId) return
     const enemyAbilities = getAbilities(currentAttacker)
     const enemyAction = chooseEnemyAction({ attacker: currentAttacker, defender: currentDefender, attackerHp: hp[currentAttacker.id] || 0, defenderHp: hp[currentDefender.id] || 0, attackerMaxHp: getMaxHp(currentAttacker), defenderMaxHp: getMaxHp(currentDefender), attackerEnergy: energy[currentAttacker.id] || 0, defenderEnergy: energy[currentDefender.id] || 0, abilities: enemyAbilities })
@@ -426,7 +453,7 @@ function BattlePage() {
       onExecute: action => { setIsEnemyThinking(false); performActionRef.current?.(action) },
     })
     return cleanup
-  }, [battleStarted, isBattleFinished, isProcessingTurn, currentAttacker, currentDefender, enemyId, hp, energy])
+  }, [battleStarted, isBattleFinished, battlePhase, isProcessingTurn, currentAttacker, currentDefender, enemyId, hp, energy])
 
   if (characters.length < 2) {
     return <section className="battle-page"><p className="eyebrow">Modo combate</p><h1>La arena necesita <span>rivales.</span></h1><div className="empty-state"><h2>Necesitas al menos dos personajes.</h2><p>Crea dos personajes para poder iniciar un combate.</p></div></section>
@@ -447,17 +474,17 @@ function BattlePage() {
           <button className="button battle-start-button" type="button" disabled={!characterA || !characterB || characterA.id === characterB.id} onClick={startBattle}>⚔️ Comenzar combate</button>
         </div>
       ) : (
-        <div className="battle-arena">
+        <div className={`battle-arena battle-arena-phase-${battlePhase}`}>
           {ultimateAnimation && <div className="battle-ultimate-overlay" key={ultimateAnimation.id} aria-live="assertive"><div className="battle-ultimate-backdrop" /><div className="battle-ultimate-content"><p className="battle-ultimate-eyebrow">⚡ TÉCNICA DEFINITIVA ⚡</p><h2>{ultimateAnimation.ultimateName}</h2><p className="battle-ultimate-character">{ultimateAnimation.name}</p>{ultimateAnimation.image ? <div className="battle-ultimate-image"><img src={ultimateAnimation.image} alt={ultimateAnimation.ultimateName} /></div> : <div className="battle-ultimate-no-image">⚡</div>}</div></div>}
           {battleNotification && <div className={`battle-notification battle-notification-${battleNotification.type}`} key={battleNotification.id}><div className="battle-notification-icon">{battleNotification.icon}</div><div className="battle-notification-content"><strong>{battleNotification.title}</strong><span>{battleNotification.text}</span></div></div>}
-          <div className="battle-round"><span>ROUND {turn}</span>{!isBattleFinished && <strong>Turno de {currentAttacker?.name}</strong>}{isBattleFinished && <strong>¡COMBATE TERMINADO!</strong>}</div>
+          <div className="battle-round"><span>ROUND {turn}</span>{battlePhase === 'fighting' && <strong>Turno de {currentAttacker?.name}</strong>}{battlePhase === 'finishing' && <strong>💥 ¡GOLPE FINAL!</strong>}{battlePhase === 'result' && <strong>🏆 ¡COMBATE TERMINADO!</strong>}</div>
           <div className="battle-fighters">
-            <BattleCharacterCard character={characterA} isActive={currentAttackerId === characterA.id && !isBattleFinished} isDefending={defending[characterA.id] || false} hp={hp[characterA.id] || 0} maxHp={getMaxHp(characterA)} energy={energy[characterA.id] || 0} side="left" combatEffect={currentAttackerId === characterA.id ? combatEffect : null} hpFlash={hpFlash[characterA.id] || false} energyPulse={energyPulse[characterA.id] || false} isDefeated={hp[characterA.id] <= 0} isVictorious={winnerId === characterA.id} states={battleStates[characterA.id] || []} healingCharacterId={healingCharacterId} />
+            <BattleCharacterCard character={characterA} isActive={currentAttackerId === characterA.id && battlePhase === 'fighting'} isDefending={defending[characterA.id] || false} hp={hp[characterA.id] || 0} maxHp={getMaxHp(characterA)} energy={energy[characterA.id] || 0} side="left" combatEffect={currentAttackerId === characterA.id ? combatEffect : null} hpFlash={hpFlash[characterA.id] || false} energyPulse={energyPulse[characterA.id] || false} isDefeated={hp[characterA.id] <= 0} isVictorious={winnerId === characterA.id} states={battleStates[characterA.id] || []} healingCharacterId={healingCharacterId} />
             <div className="battle-vs">VS</div>
-            <BattleCharacterCard character={characterB} isActive={currentAttackerId === characterB.id && !isBattleFinished} isDefending={defending[characterB.id] || false} hp={hp[characterB.id] || 0} maxHp={getMaxHp(characterB)} energy={energy[characterB.id] || 0} side="right" combatEffect={currentAttackerId === characterB.id ? combatEffect : null} hpFlash={hpFlash[characterB.id] || false} energyPulse={energyPulse[characterB.id] || false} isDefeated={hp[characterB.id] <= 0} isVictorious={winnerId === characterB.id} states={battleStates[characterB.id] || []} healingCharacterId={healingCharacterId} />
+            <BattleCharacterCard character={characterB} isActive={currentAttackerId === characterB.id && battlePhase === 'fighting'} isDefending={defending[characterB.id] || false} hp={hp[characterB.id] || 0} maxHp={getMaxHp(characterB)} energy={energy[characterB.id] || 0} side="right" combatEffect={currentAttackerId === characterB.id ? combatEffect : null} hpFlash={hpFlash[characterB.id] || false} energyPulse={energyPulse[characterB.id] || false} isDefeated={hp[characterB.id] <= 0} isVictorious={winnerId === characterB.id} states={battleStates[characterB.id] || []} healingCharacterId={healingCharacterId} />
           </div>
 
-          {!isBattleFinished && <div className={`battle-action-panel ${!isPlayerTurn ? 'is-opponent-turn' : ''}`} key={currentAttackerId}>
+          {battlePhase === 'fighting' && <div className={`battle-action-panel ${!isPlayerTurn ? 'is-opponent-turn' : ''}`} key={currentAttackerId}>
             <p className="eyebrow">Acciones de {currentAttacker?.name}</p>
             {isEnemyThinking && <div className="battle-enemy-thinking">🤖 {currentAttacker?.name} está pensando...</div>}
             <div className="battle-actions">
@@ -469,8 +496,7 @@ function BattlePage() {
             <button className="button battle-attack-button" type="button" disabled={isProcessingTurn || isEnemyThinking || (selectedAction === 'ultimate' && currentEnergy < 100) || (selectedAction.startsWith('ability-') && currentEnergy < 25)} onClick={() => performAction()}>{isProcessingTurn ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar técnica definitiva' : selectedAction.startsWith('ability-') ? '✨ Usar habilidad' : '⚔️ Atacar'}</button>
           </div>}
 
-          {isBattleFinished && (() => {
-            const winner = winnerId === characterA.id ? characterA : characterB
+          {battlePhase === 'result' && (() => {
             const playerStats = getPcBattleStats(battleLog, characterA.name, characterB.name, turn)
             return <BattleResultScreen result={winnerId === playerId ? 'victory' : 'defeat'} character={characterA} stats={playerStats} onBack={resetBattle} />
           })()}
