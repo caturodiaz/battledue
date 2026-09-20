@@ -16,6 +16,10 @@ function getSpeed(character) {
   return Number(character?.profile?.stats?.speed) || 0
 }
 
+function getImage(character) {
+  return character?.profile?.primaryImage || character?.image || ''
+}
+
 export default function OnlineBattlePage() {
   const { user, profile } = useAuth()
   const [code, setCode] = useState('')
@@ -24,55 +28,56 @@ export default function OnlineBattlePage() {
   const [characters, setCharacters] = useState([])
   const [battleCharacters, setBattleCharacters] = useState([])
   const [selectedCharacterId, setSelectedCharacterId] = useState(null)
+  const [selectedAction, setSelectedAction] = useState('basic')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function loadParticipants(roomId) {
-    const { data, error: participantsError } = await supabase
-      .from('battle_participants')
-      .select('user_id, role, character_id')
-      .eq('room_id', roomId)
-    if (participantsError) { setError(participantsError.message); return }
-    setParticipants(data || [])
-    const mine = (data || []).find(p => p.user_id === user?.id)
-    setSelectedCharacterId(mine?.character_id || null)
-  }
-
-  async function loadBattleCharacters(roomData, participantData) {
-    const ids = (participantData || []).map(p => p.character_id).filter(Boolean)
-    if (ids.length !== 2) return
+  async function loadCharacters() {
+    if (!user) return
+    const { data: unlocks, error: unlockError } = await supabase
+      .from('character_unlocks')
+      .select('character_id')
+      .eq('user_id', user.id)
+    if (unlockError) { setError(unlockError.message); return }
+    const ids = (unlocks || []).map(item => item.character_id)
+    if (!ids.length) { setCharacters([]); return }
     const { data, error: charactersError } = await supabase
       .from('characters')
       .select('id, name, image, profile')
       .in('id', ids)
-    if (charactersError) { setError(charactersError.message); return }
-    setBattleCharacters(data || [])
+      .order('name')
+    if (charactersError) setError(charactersError.message)
+    else setCharacters(data || [])
   }
 
   async function refreshRoom(roomId) {
-    const { data, error: roomError } = await supabase.from('battle_rooms').select('*').eq('id', roomId).single()
+    const { data, error: roomError } = await supabase
+      .from('battle_rooms')
+      .select('*')
+      .eq('id', roomId)
+      .single()
     if (roomError) { setError(roomError.message); return }
     setRoom(data)
+
     const { data: participantData, error: participantsError } = await supabase
       .from('battle_participants')
       .select('user_id, role, character_id')
       .eq('room_id', roomId)
     if (participantsError) { setError(participantsError.message); return }
+
     setParticipants(participantData || [])
     const mine = (participantData || []).find(p => p.user_id === user?.id)
     setSelectedCharacterId(mine?.character_id || null)
-    if (data.status === 'active') await loadBattleCharacters(data, participantData || [])
-  }
 
-  async function loadCharacters() {
-    if (!user) return
-    const { data: unlocks, error: unlockError } = await supabase.from('character_unlocks').select('character_id').eq('user_id', user.id)
-    if (unlockError) { setError(unlockError.message); return }
-    const ids = (unlocks || []).map(item => item.character_id)
-    if (!ids.length) { setCharacters([]); return }
-    const { data, error: charactersError } = await supabase.from('characters').select('id, name, image, profile').in('id', ids).order('name')
-    if (charactersError) setError(charactersError.message)
-    else setCharacters(data || [])
+    const ids = (participantData || []).map(p => p.character_id).filter(Boolean)
+    if (data.status === 'active' && ids.length === 2) {
+      const { data: selectedCharacters, error: charactersError } = await supabase
+        .from('characters')
+        .select('id, name, image, profile')
+        .in('id', ids)
+      if (charactersError) { setError(charactersError.message); return }
+      setBattleCharacters(selectedCharacters || [])
+    }
   }
 
   useEffect(() => {
@@ -96,9 +101,15 @@ export default function OnlineBattlePage() {
   async function createRoom() {
     setLoading(true); setError('')
     const roomCode = makeRoomCode()
-    const { data, error: insertError } = await supabase.from('battle_rooms').insert({ code: roomCode, host_user_id: user.id, status: 'waiting' }).select().single()
+    const { data, error: insertError } = await supabase
+      .from('battle_rooms')
+      .insert({ code: roomCode, host_user_id: user.id, status: 'waiting' })
+      .select()
+      .single()
     if (insertError) { setError(insertError.message); setLoading(false); return }
-    const { error: participantError } = await supabase.from('battle_participants').insert({ room_id: data.id, user_id: user.id, role: 'host' })
+    const { error: participantError } = await supabase
+      .from('battle_participants')
+      .insert({ room_id: data.id, user_id: user.id, role: 'host' })
     if (participantError) {
       setError(participantError.message)
       await supabase.from('battle_rooms').delete().eq('id', data.id)
@@ -112,15 +123,31 @@ export default function OnlineBattlePage() {
   async function joinRoom() {
     setLoading(true); setError('')
     const normalized = code.trim().toUpperCase()
-    const { data, error: findError } = await supabase.from('battle_rooms').select('*').eq('code', normalized).eq('status', 'waiting').maybeSingle()
+    const { data, error: findError } = await supabase
+      .from('battle_rooms')
+      .select('*')
+      .eq('code', normalized)
+      .eq('status', 'waiting')
+      .maybeSingle()
     if (findError || !data) { setError(findError?.message || 'No encontramos una sala disponible con ese código.'); setLoading(false); return }
     if (data.host_user_id === user.id) { setError('No podés unirte a tu propia sala.'); setLoading(false); return }
-    const { count } = await supabase.from('battle_participants').select('*', { count: 'exact', head: true }).eq('room_id', data.id)
+    const { count } = await supabase
+      .from('battle_participants')
+      .select('*', { count: 'exact', head: true })
+      .eq('room_id', data.id)
     if ((count || 0) >= 2) { setError('Esta sala ya tiene dos jugadores.'); setLoading(false); return }
-    const { error: joinError } = await supabase.from('battle_participants').insert({ room_id: data.id, user_id: user.id, role: 'guest' })
+    const { error: joinError } = await supabase
+      .from('battle_participants')
+      .insert({ room_id: data.id, user_id: user.id, role: 'guest' })
     if (joinError) { setError(joinError.message) }
     else {
-      const { data: updated, error: updateError } = await supabase.from('battle_rooms').update({ status: 'ready' }).eq('id', data.id).eq('status', 'waiting').select().single()
+      const { data: updated, error: updateError } = await supabase
+        .from('battle_rooms')
+        .update({ status: 'ready' })
+        .eq('id', data.id)
+        .eq('status', 'waiting')
+        .select()
+        .single()
       if (updateError) setError(updateError.message)
       else { setRoom(updated || data); await refreshRoom(data.id) }
     }
@@ -130,7 +157,11 @@ export default function OnlineBattlePage() {
   async function selectCharacter(characterId) {
     if (!room?.id || !user || loading || room.status !== 'ready') return
     setLoading(true); setError('')
-    const { error: updateError } = await supabase.from('battle_participants').update({ character_id: characterId }).eq('room_id', room.id).eq('user_id', user.id)
+    const { error: updateError } = await supabase
+      .from('battle_participants')
+      .update({ character_id: characterId })
+      .eq('room_id', room.id)
+      .eq('user_id', user.id)
     if (updateError) setError(updateError.message)
     else setSelectedCharacterId(characterId)
     setLoading(false)
@@ -156,10 +187,11 @@ export default function OnlineBattlePage() {
       round: 1,
       turn_user_id: firstUserId,
       players: {
-        [host.user_id]: { user_id: host.user_id, role: 'host', character_id: host.character_id, hp: hostHp, max_hp: hostHp, energy: 0, defending: false },
-        [guest.user_id]: { user_id: guest.user_id, role: 'guest', character_id: guest.character_id, hp: guestHp, max_hp: guestHp, energy: 0, defending: false },
+        [host.user_id]: { user_id: host.user_id, role: 'host', character_id: host.character_id, hp: hostHp, max_hp: hostHp, energy: 0, defending: false, states: [] },
+        [guest.user_id]: { user_id: guest.user_id, role: 'guest', character_id: guest.character_id, hp: guestHp, max_hp: guestHp, energy: 0, defending: false, states: [] },
       },
       winner_user_id: null,
+      status: 'active',
       log: [],
     }
 
@@ -176,6 +208,26 @@ export default function OnlineBattlePage() {
     setLoading(false)
   }
 
+  async function performOnlineAction(action = selectedAction) {
+    if (!room?.id || room.status !== 'active' || room.battle_state?.turn_user_id !== user?.id || loading) return
+    setLoading(true); setError('')
+    let rpcAction = action
+    let abilityIndex = null
+    if (action.startsWith('ability-')) {
+      abilityIndex = Number(action.replace('ability-', ''))
+      rpcAction = `ability-${abilityIndex}`
+    }
+    const { data, error: actionError } = await supabase.rpc('process_online_battle_action', {
+      p_room_id: room.id,
+      p_action: rpcAction,
+      p_ability_index: abilityIndex,
+    })
+    if (actionError) setError(actionError.message)
+    else setRoom(previous => ({ ...previous, battle_state: data, status: data?.status === 'finished' ? 'finished' : 'active' }))
+    setSelectedAction('basic')
+    setLoading(false)
+  }
+
   const host = participants.find(p => p.role === 'host')
   const guest = participants.find(p => p.role === 'guest')
   const myName = profile?.display_name || user?.email?.split('@')[0] || 'Vos'
@@ -184,41 +236,78 @@ export default function OnlineBattlePage() {
   const bothSelected = Boolean(host?.character_id && guest?.character_id)
   const selectedCharacter = useMemo(() => characters.find(character => character.id === selectedCharacterId), [characters, selectedCharacterId])
 
-  if (room?.status === 'active') {
-    const battleState = room.battle_state || {}
-    const battleByUser = battleState.players || {}
+  const battleState = room?.battle_state || null
+  const myBattlePlayer = battleState?.players?.[user?.id] || null
+  const opponentParticipant = participants.find(p => p.user_id !== user?.id)
+  const opponentBattlePlayer = opponentParticipant ? battleState?.players?.[opponentParticipant.user_id] : null
+  const myBattleCharacter = myBattlePlayer ? battleCharacters.find(c => c.id === myBattlePlayer.character_id) : null
+  const opponentBattleCharacter = opponentBattlePlayer ? battleCharacters.find(c => c.id === opponentBattlePlayer.character_id) : null
+  const isMyTurn = battleState?.turn_user_id === user?.id && battleState?.status !== 'finished' && room?.status !== 'finished'
+  const myAbilities = Array.isArray(myBattleCharacter?.profile?.abilities) ? myBattleCharacter.profile.abilities : []
+  const currentEnergy = Number(myBattlePlayer?.energy || 0)
+  const isFinished = room?.status === 'finished' || battleState?.status === 'finished' || Boolean(battleState?.winner_user_id)
+
+  if (room?.status === 'active' || room?.status === 'finished') {
+    const renderFighter = (participant) => {
+      const state = battleState?.players?.[participant.user_id] || {}
+      const character = battleCharacters.find(c => c.id === state.character_id)
+      const hpPercent = Math.max(0, Math.min(100, (Number(state.hp || 0) / Math.max(1, Number(state.max_hp || 1))) * 100))
+      return (
+        <article className={`online-fighter ${participant.user_id === user?.id ? 'is-mine' : ''} ${state.hp <= 0 ? 'is-defeated' : ''}`} key={participant.user_id}>
+          <span>{participant.user_id === user?.id ? 'VOS' : 'OPONENTE'}</span>
+          {getImage(character) ? <img src={getImage(character)} alt={character?.name || 'Personaje'} /> : null}
+          <strong>{character?.name || 'Personaje'}</strong>
+          <div className="online-battle__hp"><div style={{ width: `${hpPercent}%` }} /></div>
+          <small>{Math.ceil(state.hp || 0)} / {state.max_hp || 0} HP</small>
+          <small>⚡ {Math.round(state.energy || 0)}% energía</small>
+          {state.defending && <em>🛡️ DEFENDIENDO</em>}
+        </article>
+      )
+    }
+
+    const winnerParticipant = participants.find(p => p.user_id === battleState?.winner_user_id)
+    const winnerCharacter = winnerParticipant ? battleCharacters.find(c => c.id === battleState?.players?.[winnerParticipant.user_id]?.character_id) : null
+
     return <main className="online-battle">
-      <header><p className="eyebrow">COMBATE ONLINE</p><h1>La batalla comenzó</h1><p>La estructura de combate ya está sincronizada entre los dos jugadores.</p></header>
-      <section className="battle-room panel">
-        <div className="players">
-          {participants.map(participant => {
-            const character = battleCharacters.find(c => c.id === participant.character_id)
-            const state = battleByUser[participant.user_id] || {}
-            const image = character?.profile?.primaryImage || character?.image
-            return <article key={participant.user_id}>
-              <span>{participant.role === 'host' ? 'HOST' : 'OPONENTE'}</span>
-              {image && <img className="online-battle__fighter-image" src={image} alt={character?.name || 'Personaje'} />}
-              <strong>{character?.name || 'Personaje'}</strong>
-              <div className="online-battle__hp"><div style={{ width: `${Math.max(0, (state.hp / Math.max(1, state.max_hp)) * 100)}%` }} /></div>
-              <small>{Math.ceil(state.hp || 0)} / {state.max_hp || 0} HP</small>
-            </article>
-          })}
+      <header><p className="eyebrow">COMBATE ONLINE</p><h1>{isFinished ? 'Combate terminado' : 'La batalla comenzó'}</h1><p>{isFinished ? `Ganador: ${winnerCharacter?.name || 'Jugador'}` : 'Las acciones se sincronizan entre los dos jugadores.'}</p></header>
+      <section className="battle-room online-arena">
+        <div className="online-fighters">{participants.map(renderFighter)}</div>
+        <div className="room-status"><span>{isFinished ? 'RESULTADO' : `ROUND ${battleState?.round || 1}`}</span><strong>{isFinished ? '🏆 COMBATE TERMINADO' : isMyTurn ? '⚔️ TU TURNO' : '⌛ TURNO DEL OPONENTE'}</strong></div>
+
+        {!isFinished && (
+          <div className={`online-actions ${!isMyTurn ? 'is-disabled' : ''}`}>
+            <p className="eyebrow">ACCIONES DE {myBattleCharacter?.name || 'TU PERSONAJE'}</p>
+            <div className="online-action-grid">
+              <button className={selectedAction === 'basic' ? 'is-selected' : ''} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('basic')} type="button"><strong>⚔️ Ataque</strong><span>Ataque básico</span></button>
+              {myAbilities.map((ability, index) => {
+                const id = `ability-${index}`
+                return <button key={ability.id || id} className={selectedAction === id ? 'is-selected' : ''} disabled={!isMyTurn || loading || currentEnergy < 25} onClick={() => setSelectedAction(id)} type="button"><strong>✨ {ability.name || `Habilidad ${index + 1}`}</strong><span>25 energía</span></button>
+              })}
+              <button className={`ultimate ${selectedAction === 'ultimate' ? 'is-selected' : ''}`} disabled={!isMyTurn || loading || currentEnergy < 100} onClick={() => setSelectedAction('ultimate')} type="button"><strong>⚡ {myBattleCharacter?.profile?.ultimateName || 'Técnica definitiva'}</strong><span>{currentEnergy >= 100 ? '¡LISTA!' : `${Math.round(currentEnergy)}% de energía`}</span></button>
+              <button className={`defend ${selectedAction === 'defend' ? 'is-selected' : ''}`} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('defend')} type="button"><strong>🛡️ Defender</strong><span>-50% próximo daño</span></button>
+            </div>
+            <button className="start-button online-execute-button" disabled={!isMyTurn || loading} onClick={() => performOnlineAction()} type="button">{loading ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar definitiva' : selectedAction.startsWith('ability-') ? '✨ Usar habilidad' : '⚔️ Atacar'}</button>
+          </div>
+        )}
+
+        {isFinished && <div className="selection-status online-result">🏆 {winnerCharacter?.name || 'Jugador'} ganó el combate.</div>}
+
+        <div className="battle-log online-log">
+          {(battleState?.log || []).slice().reverse().map(entry => <div className={`battle-log-entry battle-log-${entry.type || 'attack'}`} key={entry.id}>{entry.message}</div>)}
         </div>
-        <div className="room-status"><span>TURNO</span><strong>{battleState.turn_user_id === user?.id ? 'TU TURNO' : 'TURNO DEL OPONENTE'}</strong></div>
-        <div className="selection-status">Motor online preparado · Las acciones de combate se conectarán en el siguiente paso.</div>
       </section>
     </main>
   }
 
   return <main className="online-battle">
-    <header><p className="eyebrow">BATALLAS ONLINE</p><h1>Desafiar a otro jugador</h1><p>Creá una sala para Sebastián o unite con un código.</p></header>
+    <header><p className="eyebrow">BATALLAS ONLINE</p><h1>Desafiar a otro jugador</h1><p>Creá una sala o unite con un código.</p></header>
     {!room && <section className="online-battle__actions"><button onClick={createRoom} disabled={loading}>⚔️ CREAR SALA</button><div className="join-card"><h2>UNIRSE A UNA SALA</h2><input value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={5} placeholder="CÓDIGO"/><button onClick={joinRoom} disabled={loading || code.length < 5}>ENTRAR</button></div></section>}
     {error && <p className="online-battle__error">{error}</p>}
     {room && <section className="battle-room panel">
       <div className="room-code"><span>CÓDIGO DE SALA</span><strong>{room.code}</strong></div>
       <div className="room-status"><span>ESTADO</span><strong>{room.status === 'ready' ? 'SELECCIÓN DE PERSONAJE' : 'ESPERANDO AL OPONENTE...'}</strong></div>
       <div className="players"><article><span>HOST</span><strong>{hostName}</strong>{host?.character_id && <small>✓ Personaje elegido</small>}</article><div>VS</div><article><span>OPONENTE</span><strong>{guestName}</strong>{guest?.character_id && <small>✓ Personaje elegido</small>}</article></div>
-      {room.status === 'ready' && <div className="character-select"><div className="character-select__heading"><div><p className="eyebrow">TU COLECCIÓN</p><h2>Elegí tu personaje</h2></div><span>{selectedCharacter ? `Elegido: ${selectedCharacter.name}` : 'Ninguno elegido'}</span></div><div className="character-grid">{characters.map(character => { const image = character.profile?.primaryImage || character.image; const selected = character.id === selectedCharacterId; return <button key={character.id} className={`character-card ${selected ? 'is-selected' : ''}`} onClick={() => selectCharacter(character.id)} disabled={loading}>{image ? <img src={image} alt={character.name} /> : <div className="character-card__fallback">{character.name.charAt(0)}</div>}<strong>{character.name}</strong>{selected && <span>✓ ELEGIDO</span>}</button> })}</div><div className="selection-status">{bothSelected ? '✓ Ambos jugadores eligieron personaje' : 'Esperando la elección del otro jugador...'}</div></div>}
+      {room.status === 'ready' && <div className="character-select"><div className="character-select__heading"><div><p className="eyebrow">TU COLECCIÓN</p><h2>Elegí tu personaje</h2></div><span>{selectedCharacter ? `Elegido: ${selectedCharacter.name}` : 'Ninguno elegido'}</span></div><div className="character-grid">{characters.map(character => { const image = getImage(character); const selected = character.id === selectedCharacterId; return <button key={character.id} className={`character-card ${selected ? 'is-selected' : ''}`} onClick={() => selectCharacter(character.id)} disabled={loading}>{image ? <img src={image} alt={character.name} /> : <div className="character-card__fallback">{character.name.charAt(0)}</div>}<strong>{character.name}</strong>{selected && <span>✓ ELEGIDO</span>}</button> })}</div><div className="selection-status">{bothSelected ? '✓ Ambos jugadores eligieron personaje' : 'Esperando la elección del otro jugador...'}</div></div>}
       {bothSelected && <button className="start-button" onClick={startOnlineBattle} disabled={loading || user?.id !== room.host_user_id}>{user?.id === room.host_user_id ? 'COMENZAR BATALLA' : 'ESPERANDO AL HOST...'}</button>}
     </section>}
   </main>
