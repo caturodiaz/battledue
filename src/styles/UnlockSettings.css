@@ -1,0 +1,121 @@
+.unlock-settings {
+  position: relative;
+  margin: 0 30px 30px;
+  padding: 24px;
+  background: #111;
+  color: #f7f6f1;
+  border: 3px solid #111;
+  border-top: 0;
+  box-shadow: 6px 6px 0 #a20707;
+  overflow: hidden;
+}
+
+.unlock-settings::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 8px,
+    rgba(255, 255, 255, .025) 8px,
+    rgba(255, 255, 255, .025) 9px
+  );
+}
+
+.unlock-settings > * {
+  position: relative;
+  z-index: 1;
+}
+
+.unlock-settings .profile-editor-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #3a3a3a;
+}
+
+.unlock-settings .eyebrow {
+  margin-bottom: 6px;
+  color: #d52a20;
+  font-size: .65rem;
+}
+
+.unlock-settings h3 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: -.025em;
+}
+
+.unlock-settings .profile-editor-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(180px, .8fr);
+  gap: 14px;
+}
+
+.unlock-settings .field {
+  color: #d5d2ca;
+  font-size: .65rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.unlock-settings select,
+.unlock-settings input {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 10px 13px;
+  border: 2px solid #666;
+  border-radius: 0;
+  outline: none;
+  background: #f7f6f1;
+  color: #111;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  box-sizing: border-box;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.unlock-settings select:hover,
+.unlock-settings input:hover {
+  border-color: #fff;
+}
+
+.unlock-settings select:focus,
+.unlock-settings input:focus {
+  border-color: #d52a20;
+  box-shadow: 4px 4px 0 #d52a20;
+  transform: translate(-1px, -1px);
+}
+
+.unlock-settings .profile-editor-help {
+  max-width: 760px;
+  margin: 18px 0 0;
+  padding: 11px 13px;
+  border-left: 4px solid #d52a20;
+  background: #1d1d1d;
+  color: #bdb9b1;
+  font-size: .72rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .unlock-settings {
+    margin: 0 18px 24px;
+    padding: 18px;
+  }
+
+  .unlock-settings .profile-editor-grid {
+    grid-template-columns: 1fr;
+  }
+}
