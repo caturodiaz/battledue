@@ -7,6 +7,14 @@ function getCharacterImage(character) {
   return character.profile?.primaryImage || ''
 }
 
+function getUnlockDescription(character) {
+  if (character.unlock_type === 'level' && character.unlock_level) {
+    return `Desbloquea al alcanzar el nivel ${character.unlock_level}.`
+  }
+
+  return 'Personaje bloqueado. Todavía no hay una condición definida.'
+}
+
 function CollectionPage() {
   const { user } = useAuth()
   const {
@@ -134,7 +142,7 @@ function CollectionPage() {
                   <div className="collection-card-body">
                     <span className="collection-status">🔒 Bloqueado</span>
                     <h3>{character.name}</h3>
-                    <p>La condición de desbloqueo se definirá próximamente.</p>
+                    <p>{getUnlockDescription(character)}</p>
                   </div>
                 </article>
               )
