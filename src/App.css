@@ -1,5 +1,69 @@
-/* ========================================
-   BASE & LAYOUT
-   ======================================== */
+@import url('https://raw.githubusercontent.com/caturodiaz/battledue/9956b975bb4a9211af05b79c5cb9d75dd86f4eeb/src/App.css');
 
-.app-shell {
+/* Local battle layout fixes. The previous App.css is restored from the last known-good commit above. */
+.battle-character {
+  position: relative;
+  overflow: visible;
+}
+
+.battle-character-image {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 330px;
+  min-height: 330px;
+  max-height: 330px;
+  min-width: 0;
+  overflow: hidden;
+  border-top: 2px solid #111;
+  box-sizing: border-box;
+}
+
+.battle-character-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.battle-status-list {
+  position: absolute;
+  left: 12px;
+  top: calc(100% + 8px);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  pointer-events: none;
+}
+
+.battle-defense-badge {
+  position: absolute !important;
+  z-index: 8;
+  left: 12px;
+  top: calc(100% + 8px);
+  margin: 0 !important;
+  pointer-events: none;
+}
+
+.battle-character:has(.battle-status-bleeding) .battle-defense-badge {
+  top: calc(100% + 44px);
+}
+
+@media (max-width: 760px) {
+  .battle-character-image {
+    height: 280px;
+    min-height: 280px;
+    max-height: 280px;
+  }
+}
