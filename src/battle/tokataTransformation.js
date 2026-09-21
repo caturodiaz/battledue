@@ -37,10 +37,7 @@ export function getTokataAbilities({ character, transformation, metamorphosisAva
   if (!transformation) return nativeAbilities
 
   const copiedAbilities = Array.isArray(transformation.copiedAbilities) ? transformation.copiedAbilities : []
-  if (!metamorphosisAvailable) return copiedAbilities
-
-  const metamorphosis = nativeAbilities.find(isMetamorphosisAbility)
-  return metamorphosis ? [...copiedAbilities, metamorphosis] : copiedAbilities
+  return metamorphosisAvailable ? copiedAbilities : copiedAbilities
 }
 
 export function getTokataDisplayCharacter({ character, transformation }) {
@@ -49,7 +46,7 @@ export function getTokataDisplayCharacter({ character, transformation }) {
   const transformedProfile = transformation.transformedCharacter?.profile || {}
   return {
     ...character,
-    name: transformation.transformedCharacterName || character.name,
+    name: `${character.name} (${transformation.transformedCharacterName || 'Desconocido'})`,
     image: transformation.transformedCharacter?.image || character.image,
     profile: {
       ...character.profile,
