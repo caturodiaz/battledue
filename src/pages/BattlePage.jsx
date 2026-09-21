@@ -20,11 +20,20 @@ import {
   playLostBattleSound,
   playFullHealingSound,
 } from '../battle/audio/battleSounds'
+import {
+  canUseMetamorphosis,
+  createTokataTransformation,
+  getTokataAbilities,
+  getTokataDisplayCharacter,
+  isMetamorphosisAbility,
+  isTokata,
+} from '../battle/tokataTransformation'
 
 const BASE_HP = 100
 const MAX_ENERGY = 100
 const DEFENSE_DAMAGE_REDUCTION = 0.5
 const BATTLE_FINISH_DELAY = 2200
+const TOKATA_METAMORPHOSIS_COOLDOWN = 3
 
 function getCharacterImage(character) {
   return character?.profile?.primaryImage || character?.image || ''
@@ -151,6 +160,8 @@ function BattlePage() {
   const [energyPulse, setEnergyPulse] = useState({})
   const [healingCharacterId, setHealingCharacterId] = useState('')
   const [ultimateAnimation, setUltimateAnimation] = useState(null)
+  const [tokataTransformation, setTokataTransformation] = useState(null)
+  const [tokataMetamorphosisCooldown, setTokataMetamorphosisCooldown] = useState(0)
   const performActionRef = useRef(null)
   const processedTurnRef = useRef(null)
   const finishBattleTimeoutRef = useRef(null)
@@ -163,8 +174,11 @@ function BattlePage() {
     if (currentAttackerId === characterA?.id) return characterB
     return characterA
   }, [currentAttackerId, characterA, characterB])
+  const currentAttackerTransformation = currentAttacker?.id === characterAId && isTokata(currentAttacker) ? tokataTransformation : null
+  const currentAttackerDisplay = getTokataDisplayCharacter({ character: currentAttacker, transformation: currentAttackerTransformation })
+  const characterADisplay = getTokataDisplayCharacter({ character: characterA, transformation: tokataTransformation })
   const currentEnergy = currentAttacker ? energy[currentAttacker.id] || 0 : 0
-  const currentAbilities = getAbilities(currentAttacker)
+  const currentAbilities = getTokataAbilities({ character: currentAttacker, transformation: currentAttackerTransformation, metamorphosisAvailable: tokataMetamorphosisCooldown <= 0 })
 
   useEffect(() => {
     if (characters.length >= 2 && !characterAId && !characterBId) {
@@ -235,6 +249,8 @@ function BattlePage() {
     setIsEnemyThinking(false)
     setSelectedAction('basic')
     setUltimateAnimation(null)
+    setTokataTransformation(null)
+    setTokataMetamorphosisCooldown(0)
     processedTurnRef.current = null
     setBattleStarted(true)
   }
@@ -258,6 +274,8 @@ function BattlePage() {
     setSelectedAction('basic')
     setBattleNotification(null)
     setUltimateAnimation(null)
+    setTokataTransformation(null)
+    setTokataMetamorphosisCooldown(0)
     processedTurnRef.current = null
   }
 
@@ -309,6 +327,9 @@ function BattlePage() {
       })
       setCurrentAttackerId(currentDefender.id)
       setTurn(previousTurn => previousTurn + 1)
+      if (tokataTransformation && currentAttacker.id === characterAId) {
+        setTokataMetamorphosisCooldown(previous => Math.max(0, previous - 1))
+      }
       setTimeout(() => setIsProcessingTurn(false), 350)
       return
     }
@@ -319,7 +340,6 @@ function BattlePage() {
     let guaranteedHit = false
     let criticalBonus = 0
     let actionType = 'attack'
-    let selectedAbility = null
     let abilityBattleEffect = null
     let ultimateBattleEffect = null
 
@@ -332,11 +352,45 @@ function BattlePage() {
       guaranteedHit = true
       criticalBonus = 15
       actionType = 'ultimate'
+    } else if (action === 'metamorphosis') {
+      if (!canUseMetamorphosis({ character: currentAttacker, opponent: currentDefender }) || tokataMetamorphosisCooldown > 0) return
+      setIsProcessingTurn(true)
+      const transformation = createTokataTransformation(currentDefender)
+      setTokataTransformation(transformation)
+      setTokataMetamorphosisCooldown(TOKATA_METAMORPHOSIS_COOLDOWN)
+      addLog(`🦎 ${currentAttacker.name} utiliza Metamorfosis y adopta la forma de ${currentDefender.name}. Sus habilidades normales han sido copiadas.`, 'ability', { icon: '🦎', title: '¡METAMORFOSIS!', text: `${currentAttacker.name} ahora tiene la forma de ${currentDefender.name}`, type: 'ability' })
+      setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
+      setBattleStates(previous => {
+        const nextStates = {}
+        Object.keys(previous).forEach(id => { nextStates[id] = decrementBattleStates(previous[id] || []) })
+        return nextStates
+      })
+      setCurrentAttackerId(currentDefender.id)
+      setTurn(previousTurn => previousTurn + 1)
+      setTimeout(() => setIsProcessingTurn(false), 500)
+      return
     } else if (action.startsWith('ability-')) {
       const abilityIndex = Number(action.replace('ability-', ''))
       const ability = currentAbilities[abilityIndex]
       if (!ability) return
-      selectedAbility = ability
+      if (isMetamorphosisAbility(ability)) {
+        if (!canUseMetamorphosis({ character: currentAttacker, opponent: currentDefender }) || tokataMetamorphosisCooldown > 0) return
+        setIsProcessingTurn(true)
+        const transformation = createTokataTransformation(currentDefender)
+        setTokataTransformation(transformation)
+        setTokataMetamorphosisCooldown(TOKATA_METAMORPHOSIS_COOLDOWN)
+        addLog(`🦎 ${currentAttacker.name} utiliza Metamorfosis y adopta la forma de ${currentDefender.name}. Sus habilidades normales han sido copiadas.`, 'ability', { icon: '🦎', title: '¡METAMORFOSIS!', text: `${currentAttacker.name} ahora tiene la forma de ${currentDefender.name}`, type: 'ability' })
+        setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
+        setBattleStates(previous => {
+          const nextStates = {}
+          Object.keys(previous).forEach(id => { nextStates[id] = decrementBattleStates(previous[id] || []) })
+          return nextStates
+        })
+        setCurrentAttackerId(currentDefender.id)
+        setTurn(previousTurn => previousTurn + 1)
+        setTimeout(() => setIsProcessingTurn(false), 500)
+        return
+      }
       abilityBattleEffect = getAbilityBattleEffect(ability)
       actionName = ability.name || 'Habilidad'
       energyCost = 25
@@ -431,6 +485,9 @@ function BattlePage() {
 
     setCurrentAttackerId(currentDefender.id)
     setTurn(previousTurn => previousTurn + 1)
+    if (tokataTransformation && currentAttacker.id === characterAId) {
+      setTokataMetamorphosisCooldown(previous => Math.max(0, previous - 1))
+    }
     setTimeout(() => setIsProcessingTurn(false), 350)
   }
 
@@ -477,23 +534,23 @@ function BattlePage() {
         <div className={`battle-arena battle-arena-phase-${battlePhase}`}>
           {ultimateAnimation && <div className="battle-ultimate-overlay" key={ultimateAnimation.id} aria-live="assertive"><div className="battle-ultimate-backdrop" /><div className="battle-ultimate-content"><p className="battle-ultimate-eyebrow">⚡ TÉCNICA DEFINITIVA ⚡</p><h2>{ultimateAnimation.ultimateName}</h2><p className="battle-ultimate-character">{ultimateAnimation.name}</p>{ultimateAnimation.image ? <div className="battle-ultimate-image"><img src={ultimateAnimation.image} alt={ultimateAnimation.ultimateName} /></div> : <div className="battle-ultimate-no-image">⚡</div>}</div></div>}
           {battleNotification && <div className={`battle-notification battle-notification-${battleNotification.type}`} key={battleNotification.id}><div className="battle-notification-icon">{battleNotification.icon}</div><div className="battle-notification-content"><strong>{battleNotification.title}</strong><span>{battleNotification.text}</span></div></div>}
-          <div className="battle-round"><span>ROUND {turn}</span>{battlePhase === 'fighting' && <strong>Turno de {currentAttacker?.name}</strong>}{battlePhase === 'finishing' && <strong>💥 ¡GOLPE FINAL!</strong>}{battlePhase === 'result' && <strong>🏆 ¡COMBATE TERMINADO!</strong>}</div>
+          <div className="battle-round"><span>ROUND {turn}</span>{battlePhase === 'fighting' && <strong>Turno de {currentAttackerDisplay?.name}</strong>}{battlePhase === 'finishing' && <strong>💥 ¡GOLPE FINAL!</strong>}{battlePhase === 'result' && <strong>🏆 ¡COMBATE TERMINADO!</strong>}</div>
           <div className="battle-fighters">
-            <BattleCharacterCard character={characterA} isActive={currentAttackerId === characterA.id && battlePhase === 'fighting'} isDefending={defending[characterA.id] || false} hp={hp[characterA.id] || 0} maxHp={getMaxHp(characterA)} energy={energy[characterA.id] || 0} side="left" combatEffect={currentAttackerId === characterA.id ? combatEffect : null} hpFlash={hpFlash[characterA.id] || false} energyPulse={energyPulse[characterA.id] || false} isDefeated={hp[characterA.id] <= 0} isVictorious={winnerId === characterA.id} states={battleStates[characterA.id] || []} healingCharacterId={healingCharacterId} />
+            <BattleCharacterCard character={characterADisplay} isActive={currentAttackerId === characterA.id && battlePhase === 'fighting'} isDefending={defending[characterA.id] || false} hp={hp[characterA.id] || 0} maxHp={getMaxHp(characterA)} energy={energy[characterA.id] || 0} side="left" combatEffect={currentAttackerId === characterA.id ? combatEffect : null} hpFlash={hpFlash[characterA.id] || false} energyPulse={energyPulse[characterA.id] || false} isDefeated={hp[characterA.id] <= 0} isVictorious={winnerId === characterA.id} states={battleStates[characterA.id] || []} healingCharacterId={healingCharacterId} />
             <div className="battle-vs">VS</div>
             <BattleCharacterCard character={characterB} isActive={currentAttackerId === characterB.id && battlePhase === 'fighting'} isDefending={defending[characterB.id] || false} hp={hp[characterB.id] || 0} maxHp={getMaxHp(characterB)} energy={energy[characterB.id] || 0} side="right" combatEffect={currentAttackerId === characterB.id ? combatEffect : null} hpFlash={hpFlash[characterB.id] || false} energyPulse={energyPulse[characterB.id] || false} isDefeated={hp[characterB.id] <= 0} isVictorious={winnerId === characterB.id} states={battleStates[characterB.id] || []} healingCharacterId={healingCharacterId} />
           </div>
 
           {battlePhase === 'fighting' && <div className={`battle-action-panel ${!isPlayerTurn ? 'is-opponent-turn' : ''}`} key={currentAttackerId}>
-            <p className="eyebrow">Acciones de {currentAttacker?.name}</p>
-            {isEnemyThinking && <div className="battle-enemy-thinking">🤖 {currentAttacker?.name} está pensando...</div>}
+            <p className="eyebrow">Acciones de {currentAttackerDisplay?.name}</p>
+            {isEnemyThinking && <div className="battle-enemy-thinking">🤖 {currentAttackerDisplay?.name} está pensando...</div>}
             <div className="battle-actions">
               <button className={selectedAction === 'basic' ? 'battle-action active' : 'battle-action'} type="button" disabled={!isPlayerTurn || isEnemyThinking} onClick={() => setSelectedAction('basic')}><strong>⚔️ Ataque</strong><span>Ataque básico</span></button>
-              {currentAbilities.map((ability, index) => { const actionId = `ability-${index}`; const disabled = !isPlayerTurn || currentEnergy < 25; return <button className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} type="button" key={ability.id || actionId} disabled={disabled} onClick={() => setSelectedAction(actionId)}><strong>✨ {ability.name || `Habilidad ${index + 1}`}</strong><span>25 energía</span></button> })}
+              {currentAbilities.map((ability, index) => { const actionId = `ability-${index}`; const metamorphosis = isMetamorphosisAbility(ability); const disabled = !isPlayerTurn || isEnemyThinking || currentEnergy < (metamorphosis ? 0 : 25) || (metamorphosis && tokataMetamorphosisCooldown > 0); return <button className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} type="button" key={ability.id || actionId} disabled={disabled} onClick={() => setSelectedAction(actionId)}><strong>{metamorphosis ? '🦎' : '✨'} {ability.name || `Habilidad ${index + 1}`}</strong><span>{metamorphosis ? (tokataMetamorphosisCooldown > 0 ? `Disponible en ${tokataMetamorphosisCooldown} turnos` : 'Transforma al oponente actual') : '25 energía'}</span></button> })}
               <button className={`battle-action battle-action-ultimate ${selectedAction === 'ultimate' ? 'active' : ''} ${currentEnergy >= 100 ? 'is-ready' : ''}`} type="button" disabled={!isPlayerTurn || isEnemyThinking || currentEnergy < 100} onClick={() => setSelectedAction('ultimate')}><strong>⚡ {currentAttacker?.profile?.ultimateName || 'Técnica definitiva'}</strong><span>{currentEnergy >= 100 ? '¡LISTA!' : `${Math.round(currentEnergy)}% de energía`}</span></button>
               <button className={selectedAction === 'defend' ? 'battle-action battle-action-defend active' : 'battle-action battle-action-defend'} type="button" disabled={!isPlayerTurn || isEnemyThinking} onClick={() => setSelectedAction('defend')}><strong>🛡️ Defender</strong><span>-50% próximo daño</span></button>
             </div>
-            <button className="button battle-attack-button" type="button" disabled={isProcessingTurn || isEnemyThinking || (selectedAction === 'ultimate' && currentEnergy < 100) || (selectedAction.startsWith('ability-') && currentEnergy < 25)} onClick={() => performAction()}>{isProcessingTurn ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar técnica definitiva' : selectedAction.startsWith('ability-') ? '✨ Usar habilidad' : '⚔️ Atacar'}</button>
+            <button className="button battle-attack-button" type="button" disabled={isProcessingTurn || isEnemyThinking || (selectedAction === 'ultimate' && currentEnergy < 100) || (selectedAction.startsWith('ability-') && currentAbilities[Number(selectedAction.replace('ability-', ''))] && !isMetamorphosisAbility(currentAbilities[Number(selectedAction.replace('ability-', ''))]) && currentEnergy < 25)} onClick={() => performAction()}>{isProcessingTurn ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar técnica definitiva' : selectedAction.startsWith('ability-') ? `✨ ${isMetamorphosisAbility(currentAbilities[Number(selectedAction.replace('ability-', ''))]) ? 'Usar Metamorfosis' : 'Usar habilidad'}` : '⚔️ Atacar'}</button>
           </div>}
 
           {battlePhase === 'result' && (() => {
