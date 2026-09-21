@@ -1,0 +1,45 @@
+/* ========================================
+   STATUS EFFECTS
+   ======================================== */
+
+.battle-status-bleeding {
+  position: relative;
+  overflow: visible;
+  border-color: #8f0b0b !important;
+  background: linear-gradient(135deg, #5d0b0b, #a20707) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 1px rgba(162, 7, 7, .35), 0 0 14px rgba(162, 7, 7, .35);
+  animation: battle-bleeding-pulse 1.55s ease-in-out infinite;
+}
+
+.battle-status-bleeding::before,
+.battle-status-bleeding::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  width: 5px;
+  height: 9px;
+  border-radius: 60% 40% 65% 35%;
+  background: #b30d0d;
+  opacity: 0;
+  pointer-events: none;
+  animation: battle-blood-drop 1.45s ease-in infinite;
+}
+
+.battle-status-bleeding::before { left: 23%; transform: rotate(18deg); }
+.battle-status-bleeding::after { right: 18%; width: 4px; height: 7px; animation-delay: .55s; transform: rotate(-16deg); }
+
+@keyframes battle-bleeding-pulse {
+  0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 1px rgba(162, 7, 7, .35), 0 0 12px rgba(162, 7, 7, .28); }
+  50% { transform: translateY(-1px) scale(1.035); box-shadow: 0 0 0 2px rgba(162, 7, 7, .22), 0 0 20px rgba(162, 7, 7, .48); }
+}
+
+@keyframes battle-blood-drop {
+  0% { opacity: 0; transform: translateY(-1px) scale(.6) rotate(18deg); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(15px) scale(.85) rotate(18deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-status-bleeding, .battle-status-bleeding::before, .battle-status-bleeding::after { animation: none; }
+}
