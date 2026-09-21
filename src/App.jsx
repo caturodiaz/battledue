@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import './App.css'
 import './styles/BattleEvasion.css'
 import './styles/BattleHealing.css'
+import './styles/BattleStatusEffects.css'
 import './styles/OnlineBattleSharedVisuals.css'
 
 function AppContent() {
