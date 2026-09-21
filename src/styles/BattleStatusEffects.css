@@ -4,16 +4,20 @@
 
 .battle-character {
   position: relative;
+  overflow: visible;
 }
 
+/* Statuses float over the lower part of the fighter card.
+   They do not participate in layout and never extend below the card. */
 .battle-status-list {
   position: absolute;
   left: 12px;
-  top: calc(100% + 8px);
-  z-index: 8;
+  bottom: 12px;
+  z-index: 12;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: flex-end;
   gap: 6px;
   width: max-content;
   max-width: calc(100% - 24px);
@@ -58,19 +62,19 @@
 .battle-status-bleeding::before { left: 23%; transform: rotate(18deg); }
 .battle-status-bleeding::after { right: 18%; width: 4px; height: 7px; animation-delay: .55s; transform: rotate(-16deg); }
 
-/* Defense stays visually floating too, without taking card space. */
+/* Defense is also anchored inside the fighter card. */
 .battle-defense-badge {
   position: absolute !important;
-  z-index: 8;
+  z-index: 12;
   left: 12px;
-  top: calc(100% + 8px);
+  bottom: 12px;
   margin: 0 !important;
   pointer-events: none;
 }
 
-/* If both are present, keep them readable instead of overlapping. */
+/* When both effects are active, Defense sits above the bleeding badge. */
 .battle-character:has(.battle-status-bleeding) .battle-defense-badge {
-  top: calc(100% + 44px);
+  bottom: 54px;
 }
 
 /* The bleeding glow belongs to the whole fighter card, not the image. */
@@ -82,11 +86,11 @@
   animation: battle-bleeding-card-aura 1.35s ease-in-out infinite;
 }
 
-/* Keep the blood drop, but remove the old image pseudo-overlay. */
+/* Keep the blood drop inside the fighter card. */
 .battle-character:has(.battle-status-bleeding)::after {
   content: '🩸';
   position: absolute;
-  z-index: 9;
+  z-index: 13;
   top: 8px;
   left: 10px;
   font-size: clamp(1.25rem, 2.8vw, 2rem);
