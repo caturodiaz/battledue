@@ -14,7 +14,7 @@
   min-height: 330px;
   max-height: 330px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   border-top: 2px solid #111;
   box-sizing: border-box;
 }
