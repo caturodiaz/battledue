@@ -136,15 +136,12 @@
   animation: tokata-label-fade .9s ease-out;
 }
 
-.battle-action:nth-child(2),
-.online-action-grid button:nth-child(2),
+/* The scan effect belongs only to Tokata's Metamorphosis button. */
 .online-battle-page .battle-action-metamorphosis {
   position: relative;
   overflow: hidden;
 }
 
-.battle-action:nth-child(2)::after,
-.online-action-grid button:nth-child(2)::after,
 .online-battle-page .battle-action-metamorphosis::after {
   content: '';
   position: absolute;
@@ -155,8 +152,6 @@
   pointer-events: none;
 }
 
-.battle-action:nth-child(2):hover:not(:disabled),
-.online-action-grid button:nth-child(2):hover:not(:disabled),
 .online-battle-page .battle-action-metamorphosis:hover {
   border-color: #8a43d5;
   box-shadow: 0 0 16px rgba(145, 55, 255, .28), 4px 4px 0 #111;
@@ -215,8 +210,6 @@
   .online-battle-page .battle-character.tokata-is-transformed .battle-character-heading h2,
   .online-battle-page .tokata-copy-label,
   .online-battle-page .tokata-copy-aura,
-  .battle-action:nth-child(2)::after,
-  .online-action-grid button:nth-child(2)::after,
   .online-battle-page .battle-action-metamorphosis::after {
     animation: none;
   }
