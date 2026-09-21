@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './styles/BattleStatusEffects.css'
 import './styles/TokataMetamorphosis.css'
+import './onlineBattleTokataEnhancements'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
