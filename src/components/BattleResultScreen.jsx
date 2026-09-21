@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { useAuth } from '../context/AuthContext'
 import './BattleResultScreen.css'
 
 function formatNumber(value) {
@@ -23,6 +25,9 @@ export default function BattleResultScreen({
   rematchLoading = false,
 }) {
   const [showDetails, setShowDetails] = useState(false)
+  const [pcReward, setPcReward] = useState(null)
+  const rewardRequestedRef = useRef(false)
+  const { user } = useAuth()
   const isVictory = result === 'victory'
   const waitingForOpponent = isOnline && rematchStatus === 'accepted' && opponentRematchStatus === 'pending'
   const opponentAccepted = isOnline && opponentRematchStatus === 'accepted'
@@ -36,6 +41,33 @@ export default function BattleResultScreen({
       document.body.style.overflow = previousOverflow
     }
   }, [])
+
+  useEffect(() => {
+    if (isOnline || !user?.id || rewardRequestedRef.current) return
+    rewardRequestedRef.current = true
+
+    async function awardPcXp() {
+      const { data, error } = await supabase.rpc('award_battle_xp', {
+        p_user_id: user.id,
+        p_won: isVictory,
+      })
+
+      if (error) {
+        console.error('Error awarding PC battle XP:', error)
+        return
+      }
+
+      const reward = Array.isArray(data) ? data[0] : data
+      if (reward) setPcReward(reward)
+    }
+
+    awardPcXp()
+  }, [isOnline, user?.id, isVictory])
+
+  const displayedXpEarned = isOnline ? xpEarned : (pcReward?.experience_gained ?? xpEarned)
+  const displayedLevel = isOnline ? currentLevel : (pcReward?.new_level ?? currentLevel)
+  const displayedPreviousLevel = isOnline ? previousLevel : (pcReward?.previous_level ?? previousLevel)
+  const displayedLeveledUp = isOnline ? leveledUp : Boolean(pcReward?.leveled_up ?? leveledUp)
 
   return (
     <section className={`battle-result-stage battle-result-${isVictory ? 'victory' : 'defeat'}`} aria-label="Resultado del combate">
@@ -85,13 +117,13 @@ export default function BattleResultScreen({
             <div className="battle-result-progression">
               <div className="battle-result-xp">
                 <span className="battle-result-label">XP OBTENIDA</span>
-                <strong>+{formatNumber(xpEarned)} XP</strong>
+                <strong>+{formatNumber(displayedXpEarned)} XP</strong>
               </div>
               <div className="battle-result-level">
                 <span className="battle-result-label">NIVEL ACTUAL</span>
-                <strong>{currentLevel}</strong>
-                {leveledUp && previousLevel !== currentLevel && (
-                  <span className="battle-result-level-up">⬆️ ¡SUBISTE DEL NIVEL {previousLevel} AL {currentLevel}!</span>
+                <strong>{displayedLevel}</strong>
+                {displayedLeveledUp && displayedPreviousLevel !== displayedLevel && (
+                  <span className="battle-result-level-up">⬆️ ¡SUBISTE DEL NIVEL {displayedPreviousLevel} AL {displayedLevel}!</span>
                 )}
               </div>
             </div>
