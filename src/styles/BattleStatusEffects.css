@@ -2,12 +2,6 @@
    STATUS EFFECTS
    ======================================== */
 
-/*
- * Status badges float over the fighter card so they never change
- * the card's layout or push the character image down.
- * Their DOM order is preserved by the flex column, which lets us
- * keep a stable visual stack as more status effects are added.
- */
 .battle-character {
   position: relative;
 }
@@ -64,6 +58,21 @@
 .battle-status-bleeding::before { left: 23%; transform: rotate(18deg); }
 .battle-status-bleeding::after { right: 18%; width: 4px; height: 7px; animation-delay: .55s; transform: rotate(-16deg); }
 
+/* Defense stays visually floating too, without taking card space. */
+.battle-defense-badge {
+  position: absolute !important;
+  z-index: 8;
+  top: 12px;
+  right: 12px;
+  margin: 0 !important;
+  pointer-events: none;
+}
+
+/* If both are present, keep them readable instead of overlapping. */
+.battle-character:has(.battle-status-bleeding) .battle-defense-badge {
+  top: 50px;
+}
+
 /* The bleeding glow belongs to the whole fighter card, not the image. */
 .battle-character:has(.battle-status-bleeding) {
   box-shadow:
@@ -73,7 +82,7 @@
   animation: battle-bleeding-card-aura 1.35s ease-in-out infinite;
 }
 
-/* A single blood drop remains as the character's visual marker. */
+/* Keep the blood drop, but remove the old image pseudo-overlay. */
 .battle-character:has(.battle-status-bleeding)::after {
   content: '🩸';
   position: absolute;
