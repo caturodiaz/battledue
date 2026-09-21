@@ -1,3 +1,5 @@
+import { playTokataTransformationSound } from './audio/battleSounds'
+
 const TOKATA_NAME = 'Tokata'
 const TOKATA_ID = '1866b4d1-b0a2-4dfd-96ff-4e3f4f014813'
 const METAMORPHOSIS_NAME = 'Metamorfosis'
@@ -18,6 +20,7 @@ export function getCopyableAbilities(character) {
 
 export function createTokataTransformation(opponent) {
   if (!opponent) return null
+  playTokataTransformationSound()
   return {
     originalCharacterId: TOKATA_ID,
     transformedCharacterId: opponent.id,
