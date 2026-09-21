@@ -19,7 +19,13 @@ function getOnlineBattleStats(battleState, userId) {
 
 function getBattleCharacterForDisplay(character, state) {
   if (!character || !state || !isTokata(character) || !state.tokata_transformation) return character
-  return getTokataDisplayCharacter({ character, transformation: { ...state.tokata_transformation, transformedCharacterName: state.tokata_transformation.transformed_character_name, transformedCharacter: null, copiedAbilities: state.tokata_transformation.copied_abilities || [] } })
+  const transformed = {
+    id: state.tokata_transformation.transformed_character_id,
+    name: state.tokata_transformation.transformed_character_name,
+    image: state.tokata_transformation.transformed_character_image,
+    profile: {},
+  }
+  return getTokataDisplayCharacter({ character, transformation: { ...state.tokata_transformation, transformedCharacterName: transformed.name, transformedCharacter: transformed, copiedAbilities: state.tokata_transformation.copied_abilities || [] } })
 }
 
 function getBattleAbilities(character, state) {
@@ -263,7 +269,7 @@ export default function OnlineBattlePage() {
             <p className="eyebrow">Acciones de {myDisplayCharacter?.name || 'tu personaje'}</p>
             <div className="battle-actions">
               <button className={selectedAction === 'basic' ? 'battle-action active' : 'battle-action'} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('basic')} type="button"><strong>⚔️ Ataque</strong><span>Ataque básico</span></button>
-              {myAbilities.map((ability, index) => { const actionId = `ability-${index}`; return <button key={ability.id || actionId} className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} disabled={!isMyTurn || loading || currentEnergy < 25} onClick={() => setSelectedAction(actionId)} type="button"><strong>✨ {ability.name || `Habilidad ${index + 1}`}</strong><span>{isTokata(myBattleCharacter) && !myBattlePlayer?.tokata_transformation ? '25 energía · puede transformar' : '25 energía'}</span></button> })}
+              {myAbilities.map((ability, index) => { const actionId = `ability-${index}`; return <button key={ability.id || actionId} className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} disabled={!isMyTurn || loading || currentEnergy < 25} onClick={() => setSelectedAction(actionId)} type="button"><strong>✨ {ability.name || `Habilidad ${index + 1}`}</strong><span>25 energía</span></button> })}
               <button className={`battle-action battle-action-ultimate ${selectedAction === 'ultimate' ? 'active' : ''} ${currentEnergy >= 100 ? 'is-ready' : ''}`} disabled={!isMyTurn || loading || currentEnergy < 100} onClick={() => setSelectedAction('ultimate')} type="button"><strong>⚡ {myBattleCharacter?.profile?.ultimateName || 'Técnica definitiva'}</strong><span>{currentEnergy >= 100 ? '¡LISTA!' : `${Math.round(currentEnergy)}% de energía`}</span></button>
               <button className={selectedAction === 'defend' ? 'battle-action battle-action-defend active' : 'battle-action battle-action-defend'} disabled={!isMyTurn || loading} onClick={() => setSelectedAction('defend')} type="button"><strong>🛡️ Defender</strong><span>-50% próximo daño</span></button>
             </div>
