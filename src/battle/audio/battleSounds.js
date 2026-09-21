@@ -6,6 +6,7 @@ import swordShieldSound from '../../assets/sounds/sword_with_shield.mp3'
 import swooshSound from '../../assets/sounds/swoosh.mp3'
 import lostBattleSound from '../../assets/sounds/lost-battle.mp3'
 import fullHealingSound from '../../assets/sounds/full-healing.mp3'
+import tokataTransformationSound from '../../assets/sounds/totaka-transformation.mp3'
 import { supabase } from '../../lib/supabaseClient'
 
 const soundSources = {
@@ -17,6 +18,7 @@ const soundSources = {
   swoosh: swooshSound,
   lostBattle: lostBattleSound,
   fullHealing: fullHealingSound,
+  tokataTransformation: tokataTransformationSound,
 }
 
 function playSound(source) {
@@ -146,4 +148,8 @@ export function playLostBattleSound() {
 
 export function playFullHealingSound() {
   playSound(soundSources.fullHealing)
+}
+
+export function playTokataTransformationSound() {
+  playSound(soundSources.tokataTransformation)
 }
