@@ -64,15 +64,88 @@
   animation: tokata-label-fade .9s ease-out;
 }
 
-/* Tokata's native ability is the first ability, immediately after the basic attack. */
+/* Online battle: the online card is state-driven instead of using .online-fighter. */
+.online-battle-page .battle-character.tokata-is-transformed {
+  position: relative;
+}
+
+.online-battle-page .battle-character.tokata-is-transformed .battle-character-image {
+  position: relative;
+  isolation: isolate;
+  animation: tokata-transformation-pulse 1.25s cubic-bezier(.22, 1, .36, 1);
+}
+
+.online-battle-page .battle-character.tokata-is-transformed .battle-character-image::before {
+  content: '';
+  position: absolute;
+  inset: 7%;
+  z-index: 0;
+  border: 2px solid rgba(145, 55, 255, .75);
+  box-shadow: 0 0 18px rgba(145, 55, 255, .55), 0 0 48px rgba(40, 180, 255, .28), inset 0 0 22px rgba(145, 55, 255, .2);
+  border-radius: 8px;
+  animation: tokata-copy-aura 1.25s ease-out;
+  pointer-events: none;
+}
+
+.online-battle-page .battle-character.tokata-is-transformed .battle-character-image img {
+  position: relative;
+  z-index: 1;
+}
+
+.online-battle-page .tokata-copy-label {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  z-index: 12;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border: 2px solid #111;
+  background: rgba(17, 17, 17, .9);
+  color: #fff;
+  font-size: .58rem;
+  font-weight: 950;
+  letter-spacing: .13em;
+  box-shadow: 3px 3px 0 rgba(145, 55, 255, .75);
+  animation: tokata-form-copy-label 1.25s cubic-bezier(.22, 1, .36, 1) forwards;
+  pointer-events: none;
+}
+
+.online-battle-page .tokata-copy-aura {
+  position: absolute;
+  inset: 7%;
+  z-index: 0;
+  border-radius: 8px;
+  box-shadow: 0 0 24px rgba(145, 55, 255, .42), 0 0 55px rgba(40, 180, 255, .22);
+  animation: tokata-copy-aura 1.25s ease-out;
+  pointer-events: none;
+}
+
+.online-battle-page .battle-character.tokata-is-transformed .battle-character-heading h2 {
+  animation: tokata-name-reveal .8s cubic-bezier(.22, 1, .36, 1);
+}
+
+.online-battle-page .battle-character.tokata-is-transformed .battle-character-heading h2::after {
+  content: '↳ FORMA COPIADA';
+  display: block;
+  margin-top: 5px;
+  color: #7d35c8;
+  font-size: .52rem;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  animation: tokata-label-fade .9s ease-out;
+}
+
 .battle-action:nth-child(2),
-.online-action-grid button:nth-child(2) {
+.online-action-grid button:nth-child(2),
+.online-battle-page .battle-action-metamorphosis {
   position: relative;
   overflow: hidden;
 }
 
 .battle-action:nth-child(2)::after,
-.online-action-grid button:nth-child(2)::after {
+.online-action-grid button:nth-child(2)::after,
+.online-battle-page .battle-action-metamorphosis::after {
   content: '';
   position: absolute;
   inset: -40% -20%;
@@ -83,14 +156,10 @@
 }
 
 .battle-action:nth-child(2):hover:not(:disabled),
-.online-action-grid button:nth-child(2):hover:not(:disabled) {
+.online-action-grid button:nth-child(2):hover:not(:disabled),
+.online-battle-page .battle-action-metamorphosis:hover {
   border-color: #8a43d5;
   box-shadow: 0 0 16px rgba(145, 55, 255, .28), 4px 4px 0 #111;
-}
-
-.battle-action:nth-child(2):disabled,
-.online-action-grid button:nth-child(2):disabled {
-  filter: saturate(.75);
 }
 
 @keyframes tokata-transformation-pulse {
@@ -142,8 +211,13 @@
   .battle-character:has(img[alt^="Tokata ("]) .battle-character-heading h2::after,
   .online-fighter:has(img[alt^="Tokata ("]) img,
   .online-fighter:has(img[alt^="Tokata ("]) > strong,
+  .online-battle-page .battle-character.tokata-is-transformed .battle-character-image,
+  .online-battle-page .battle-character.tokata-is-transformed .battle-character-heading h2,
+  .online-battle-page .tokata-copy-label,
+  .online-battle-page .tokata-copy-aura,
   .battle-action:nth-child(2)::after,
-  .online-action-grid button:nth-child(2)::after {
+  .online-action-grid button:nth-child(2)::after,
+  .online-battle-page .battle-action-metamorphosis::after {
     animation: none;
   }
 }
