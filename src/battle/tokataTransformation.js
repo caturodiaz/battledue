@@ -22,25 +22,43 @@ export function createTokataTransformation(opponent) {
     originalCharacterId: TOKATA_ID,
     transformedCharacterId: opponent.id,
     transformedCharacterName: opponent.name,
+    transformedCharacter: opponent,
     copiedAbilityIds: getCopyableAbilities(opponent).map(ability => ability.id).filter(Boolean),
     copiedAbilities: getCopyableAbilities(opponent),
   }
 }
 
-export function getTokataAbilities({ character, opponent, transformation }) {
+export function getTokataAbilities({ character, transformation, metamorphosisAvailable = false }) {
   if (!isTokata(character)) {
     return Array.isArray(character?.profile?.abilities) ? character.profile.abilities : []
   }
 
-  if (!transformation) {
-    return Array.isArray(character?.profile?.abilities) ? character.profile.abilities : []
-  }
+  const nativeAbilities = Array.isArray(character?.profile?.abilities) ? character.profile.abilities : []
+  if (!transformation) return nativeAbilities
 
-  return Array.isArray(transformation.copiedAbilities) ? transformation.copiedAbilities : []
+  const copiedAbilities = Array.isArray(transformation.copiedAbilities) ? transformation.copiedAbilities : []
+  if (!metamorphosisAvailable) return copiedAbilities
+
+  const metamorphosis = nativeAbilities.find(isMetamorphosisAbility)
+  return metamorphosis ? [...copiedAbilities, metamorphosis] : copiedAbilities
 }
 
-export function shouldShowMetamorphosis({ character, transformation }) {
-  return isTokata(character) && !transformation
+export function getTokataDisplayCharacter({ character, transformation }) {
+  if (!isTokata(character) || !transformation) return character
+
+  const transformedProfile = transformation.transformedCharacter?.profile || {}
+  return {
+    ...character,
+    name: transformation.transformedCharacterName || character.name,
+    image: transformation.transformedCharacter?.image || character.image,
+    profile: {
+      ...character.profile,
+      primaryImage: transformedProfile.primaryImage || transformation.transformedCharacter?.image || character.profile?.primaryImage,
+      title: transformedProfile.title || character.profile?.title,
+      tagline: transformedProfile.tagline || character.profile?.tagline,
+      abilities: transformation.copiedAbilities || [],
+    },
+  }
 }
 
 export function canUseMetamorphosis({ character, opponent }) {
