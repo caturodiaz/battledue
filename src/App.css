@@ -1,6 +1,6 @@
-@import url('https://raw.githubusercontent.com/caturodiaz/battledue/9956b975bb4a9211af05b79c5cb9d75dd86f4eeb/src/App.css');
+@import url('https://cdn.jsdelivr.net/gh/caturodiaz/battledue@9956b975bb4a9211af05b79c5cb9d75dd86f4eeb/src/App.css');
 
-/* Local battle layout fixes. The previous App.css is restored from the last known-good commit above. */
+/* Battle image/status layout fixes. Keep the original application stylesheet intact via the known-good revision above. */
 .battle-character {
   position: relative;
   overflow: visible;
@@ -14,7 +14,7 @@
   min-height: 330px;
   max-height: 330px;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
   border-top: 2px solid #111;
   box-sizing: border-box;
 }
