@@ -1,0 +1,149 @@
+/* Tokata's signature transformation should feel like a transformation, not another button. */
+
+.battle-character:has(img[alt^="Tokata ("]) .battle-character-image,
+.online-fighter:has(img[alt^="Tokata ("]) img {
+  animation: tokata-transformation-pulse 1.25s cubic-bezier(.22, 1, .36, 1);
+}
+
+.battle-character:has(img[alt^="Tokata ("]) .battle-character-image {
+  position: relative;
+  isolation: isolate;
+}
+
+.battle-character:has(img[alt^="Tokata ("]) .battle-character-image::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  z-index: -1;
+  border: 2px solid rgba(145, 55, 255, .75);
+  box-shadow: 0 0 18px rgba(145, 55, 255, .55), 0 0 48px rgba(40, 180, 255, .28), inset 0 0 22px rgba(145, 55, 255, .2);
+  opacity: 0;
+  animation: tokata-copy-aura 1.25s ease-out;
+  pointer-events: none;
+}
+
+.battle-character:has(img[alt^="Tokata ("]) .battle-character-image::after {
+  content: 'FORMA COPIADA';
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: 10%;
+  transform: translate(-50%, 8px) scale(.92);
+  padding: 7px 12px;
+  border: 2px solid #111;
+  background: rgba(17, 17, 17, .9);
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .14em;
+  opacity: 0;
+  box-shadow: 4px 4px 0 rgba(145, 55, 255, .75);
+  animation: tokata-form-copy-label 1.25s cubic-bezier(.22, 1, .36, 1) forwards;
+  pointer-events: none;
+}
+
+.battle-character:has(img[alt^="Tokata ("]) .battle-character-heading h2,
+.online-fighter:has(img[alt^="Tokata ("]) > strong {
+  animation: tokata-name-reveal .8s cubic-bezier(.22, 1, .36, 1);
+}
+
+.battle-character:has(img[alt^="Tokata ("]) .battle-character-heading h2 {
+  position: relative;
+  text-shadow: 0 0 0 transparent;
+}
+
+.battle-character:has(img[alt^="Tokata ("]) .battle-character-heading h2::after {
+  content: '↳ FORMA COPIADA';
+  display: block;
+  margin-top: 5px;
+  color: #7d35c8;
+  font-size: .52rem;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  animation: tokata-label-fade .9s ease-out;
+}
+
+/* Tokata's native ability is the first ability, immediately after the basic attack. */
+.battle-action:nth-child(2),
+.online-action-grid button:nth-child(2) {
+  position: relative;
+  overflow: hidden;
+}
+
+.battle-action:nth-child(2)::after,
+.online-action-grid button:nth-child(2)::after {
+  content: '';
+  position: absolute;
+  inset: -40% -20%;
+  background: linear-gradient(115deg, transparent 35%, rgba(145, 55, 255, .18) 48%, rgba(80, 210, 255, .3) 50%, transparent 62%);
+  transform: translateX(-75%);
+  animation: tokata-button-scan 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.battle-action:nth-child(2):hover:not(:disabled),
+.online-action-grid button:nth-child(2):hover:not(:disabled) {
+  border-color: #8a43d5;
+  box-shadow: 0 0 16px rgba(145, 55, 255, .28), 4px 4px 0 #111;
+}
+
+.battle-action:nth-child(2):disabled,
+.online-action-grid button:nth-child(2):disabled {
+  filter: saturate(.75);
+}
+
+@keyframes tokata-transformation-pulse {
+  0% { transform: scale(1) skewX(0deg); filter: brightness(1) saturate(1); }
+  18% { transform: scale(1.015) skewX(-1deg); filter: brightness(1.45) saturate(1.5); }
+  32% { transform: scale(.985) skewX(1.5deg); filter: brightness(.8) saturate(1.7); }
+  46% { transform: scale(1.02) skewX(-1deg); filter: brightness(1.65) saturate(1.35); }
+  62% { transform: scale(.995) skewX(.5deg); filter: brightness(1.2) saturate(1.25); }
+  100% { transform: scale(1) skewX(0deg); filter: brightness(1) saturate(1); }
+}
+
+@keyframes tokata-copy-aura {
+  0% { opacity: 0; transform: scale(.72) rotate(-2deg); filter: blur(8px); }
+  25% { opacity: 1; transform: scale(1.03) rotate(1deg); filter: blur(0); }
+  55% { opacity: .75; transform: scale(.98) rotate(-1deg); }
+  100% { opacity: 0; transform: scale(1.08) rotate(0); }
+}
+
+@keyframes tokata-form-copy-label {
+  0%, 35% { opacity: 0; transform: translate(-50%, 8px) scale(.82); }
+  58% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes tokata-name-reveal {
+  0% { opacity: .25; transform: translateX(-8px); filter: blur(5px); }
+  30% { opacity: .8; transform: translateX(3px); filter: blur(1px); }
+  48% { opacity: .55; transform: translateX(-2px); filter: blur(2px); }
+  70% { opacity: 1; transform: translateX(0); filter: blur(0); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes tokata-label-fade {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tokata-button-scan {
+  0%, 25% { transform: translateX(-75%); }
+  55%, 70% { transform: translateX(75%); }
+  100% { transform: translateX(75%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-character:has(img[alt^="Tokata ("]) .battle-character-image,
+  .battle-character:has(img[alt^="Tokata ("]) .battle-character-image::before,
+  .battle-character:has(img[alt^="Tokata ("]) .battle-character-image::after,
+  .battle-character:has(img[alt^="Tokata ("]) .battle-character-heading h2,
+  .battle-character:has(img[alt^="Tokata ("]) .battle-character-heading h2::after,
+  .online-fighter:has(img[alt^="Tokata ("]) img,
+  .online-fighter:has(img[alt^="Tokata ("]) > strong,
+  .battle-action:nth-child(2)::after,
+  .online-action-grid button:nth-child(2)::after {
+    animation: none;
+  }
+}
