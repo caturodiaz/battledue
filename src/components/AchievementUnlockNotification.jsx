@@ -25,6 +25,7 @@ export default function AchievementUnlockNotification({ user, supabase }) {
     initializedRef.current = false
 
     async function checkAchievements() {
+      await supabase.rpc('sync_player_achievements', { p_user_id: user.id }).catch(() => {})
       const { data, error } = await supabase.from('player_achievements').select('achievement_id, unlocked_at').eq('user_id', user.id).order('unlocked_at')
       if (!active || error) return
       const ids = new Set((data || []).map((item) => item.achievement_id))
