@@ -3,6 +3,7 @@ import achievementUnlockedAudio from '../assets/sounds/achievement-unlocked-data
 import '../styles/AchievementUnlockNotification.css'
 
 const STORAGE_PREFIX = 'battledue-seen-achievements:'
+const ACHIEVEMENT_EVENT = 'battledue:achievement-event'
 
 function getSeenIds(userId) {
   try { return new Set(JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${userId}`) || '[]')) } catch { return new Set() }
@@ -24,6 +25,15 @@ export default function AchievementUnlockNotification({ user, supabase }) {
     let active = true
     seenRef.current = getSeenIds(user.id)
     initializedRef.current = false
+
+    function enqueueAchievements(achievements) {
+      const fresh = achievements.filter((achievement) => !seenRef.current.has(achievement.id))
+      if (!fresh.length) return
+
+      seenRef.current = new Set([...seenRef.current, ...fresh.map((achievement) => achievement.id)])
+      saveSeenIds(user.id, seenRef.current)
+      setQueue((previous) => [...previous, ...fresh])
+    }
 
     async function loadUnlockedAchievements() {
       const { data, error } = await supabase
@@ -54,18 +64,18 @@ export default function AchievementUnlockNotification({ user, supabase }) {
       enqueueAchievements(definitions || [])
     }
 
-    function enqueueAchievements(achievements) {
-      const fresh = achievements.filter((achievement) => !seenRef.current.has(achievement.id))
-      if (!fresh.length) return
-
-      seenRef.current = new Set([...seenRef.current, ...fresh.map((achievement) => achievement.id)])
-      saveSeenIds(user.id, seenRef.current)
-      setQueue((previous) => [...previous, ...fresh])
-    }
-
     async function syncAchievements() {
       try {
         await supabase.rpc('sync_player_achievements')
+      } catch {
+        return
+      }
+      await loadUnlockedAchievements()
+    }
+
+    async function recordAchievementEvent(achievementId) {
+      try {
+        await supabase.rpc('record_achievement_event', { p_achievement_id: achievementId })
       } catch {
         return
       }
@@ -100,6 +110,14 @@ export default function AchievementUnlockNotification({ user, supabase }) {
       )
       .subscribe()
 
+    const handleAchievementEvent = (event) => {
+      if (!active) return
+      const achievementId = event?.detail?.achievementId
+      if (achievementId) recordAchievementEvent(achievementId)
+      else syncAchievements()
+    }
+
+    window.addEventListener(ACHIEVEMENT_EVENT, handleAchievementEvent)
     syncAchievements()
 
     const handleVisibilityChange = () => {
@@ -113,6 +131,7 @@ export default function AchievementUnlockNotification({ user, supabase }) {
 
     return () => {
       active = false
+      window.removeEventListener(ACHIEVEMENT_EVENT, handleAchievementEvent)
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       supabase.removeChannel(channel)
