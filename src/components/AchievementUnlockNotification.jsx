@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import achievementUnlockedAudio from '../assets/sounds/achievement-unlocked-data'
+import achievementUnlockedAudio from '../assets/sounds/achievement-unlocked-data.js'
 import '../styles/AchievementUnlockNotification.css'
 
 const STORAGE_PREFIX = 'battledue-seen-achievements:'
@@ -25,7 +25,12 @@ export default function AchievementUnlockNotification({ user, supabase }) {
     initializedRef.current = false
 
     async function checkAchievements() {
-      await supabase.rpc('sync_player_achievements').catch(() => {})
+      try {
+        await supabase.rpc('sync_player_achievements')
+      } catch {
+        return
+      }
+
       const { data, error } = await supabase.from('player_achievements').select('achievement_id, unlocked_at').eq('user_id', user.id).order('unlocked_at')
       if (!active || error) return
       const ids = new Set((data || []).map((item) => item.achievement_id))
