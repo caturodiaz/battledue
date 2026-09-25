@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import AchievementsSection from '../components/AchievementsSection'
 import '../styles/PlayerProfile.css'
 
 const LEVEL_XP = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700]
@@ -15,24 +16,33 @@ export default function PlayerProfilePage() {
   const [progress, setProgress] = useState(null)
   const [unlockedCount, setUnlockedCount] = useState(0)
   const [totalCharacters, setTotalCharacters] = useState(0)
+  const [achievements, setAchievements] = useState([])
+  const [unlockedAchievementIds, setUnlockedAchievementIds] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
     async function load() {
       if (!user) return
-      const [progressResult, unlockedResult, charactersResult] = await Promise.all([
+      await supabase.rpc('sync_player_achievements')
+      const [progressResult, unlockedResult, charactersResult, achievementsResult, playerAchievementsResult] = await Promise.all([
         supabase.from('player_progress').select('level, experience, wins, losses, battles').eq('user_id', user.id).maybeSingle(),
         supabase.from('character_unlocks').select('character_id', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('characters').select('id', { count: 'exact', head: true }),
+        supabase.from('achievements').select('id, name, description, icon, category, sort_order').order('sort_order'),
+        supabase.from('player_achievements').select('achievement_id, unlocked_at').eq('user_id', user.id).order('unlocked_at'),
       ])
       if (!active) return
       if (progressResult.error) console.error('Error cargando progreso:', progressResult.error)
       if (unlockedResult.error) console.error('Error cargando personajes desbloqueados:', unlockedResult.error)
       if (charactersResult.error) console.error('Error cargando personajes:', charactersResult.error)
+      if (achievementsResult.error) console.error('Error cargando logros:', achievementsResult.error)
+      if (playerAchievementsResult.error) console.error('Error cargando logros del jugador:', playerAchievementsResult.error)
       setProgress(progressResult.data ?? { level: 1, experience: 0, wins: 0, losses: 0, battles: 0 })
       setUnlockedCount(unlockedResult.count ?? 0)
       setTotalCharacters(charactersResult.count ?? 0)
+      setAchievements(achievementsResult.data ?? [])
+      setUnlockedAchievementIds((playerAchievementsResult.data ?? []).map((item) => item.achievement_id))
       setLoading(false)
     }
     load()
@@ -72,6 +82,8 @@ export default function PlayerProfilePage() {
         <article><strong>{stats.losses}</strong><span>DERROTAS</span></article>
         <article><strong>{winRate}%</strong><span>VICTORIAS</span></article>
       </section>
+
+      <AchievementsSection achievements={achievements} unlockedIds={unlockedAchievementIds} />
 
       <section className="player-profile__collection panel">
         <div><p className="eyebrow">COLECCIÓN</p><h2>Personajes desbloqueados</h2></div>
