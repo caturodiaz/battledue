@@ -1,0 +1,21 @@
+.achievement-unlock { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; pointer-events: none; overflow: hidden; animation: achievement-screen-in 180ms ease-out both; }
+.achievement-unlock::before { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.72); backdrop-filter: blur(2px); animation: achievement-backdrop 5200ms ease-out both; }
+.achievement-unlock__card { position: relative; width: min(620px,calc(100vw - 32px)); padding: 22px 28px 26px; border: 5px solid #111; background: #f4f0e7; box-shadow: 14px 14px 0 #111; transform: rotate(-1.5deg) scale(.72); animation: achievement-card 5200ms cubic-bezier(.16,1.2,.3,1) both; }
+.achievement-unlock__eyebrow { display: inline-block; margin-bottom: 14px; padding: 6px 10px; background: #b91c1c; color: #fff; border: 3px solid #111; font-weight: 900; letter-spacing: .08em; font-size: clamp(.72rem,2vw,.95rem); transform: rotate(1deg); }
+.achievement-unlock__content { display: flex; align-items: center; gap: 22px; }
+.achievement-unlock__icon { flex: 0 0 104px; width: 104px; height: 104px; display: grid; place-items: center; border: 5px solid #111; background: #fff; box-shadow: 7px 7px 0 #b91c1c; font-size: 3.7rem; animation: achievement-icon 5200ms cubic-bezier(.2,1.5,.4,1) both; }
+.achievement-unlock__copy h2 { margin: 0 0 7px; color: #111; font-size: clamp(1.65rem,5vw,2.8rem); line-height: .95; font-weight: 950; text-transform: uppercase; }
+.achievement-unlock__copy p { margin: 0; color: #333; font-size: clamp(.9rem,2.4vw,1.08rem); line-height: 1.4; }
+.achievement-unlock__shine { position: absolute; inset: 0; background: linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 48%,transparent 62%); transform: translateX(-120%); animation: achievement-shine 900ms 550ms ease-out both; pointer-events: none; }
+.achievement-unlock__burst,.achievement-unlock__burst::before,.achievement-unlock__burst::after { position: absolute; display: grid; place-items: center; color: #b91c1c; font-size: 4rem; font-weight: 900; }
+.achievement-unlock__burst { animation: achievement-burst 900ms 100ms ease-out both; }
+.achievement-unlock__burst::before,.achievement-unlock__burst::after { content: '✦'; inset: 0; transform: rotate(35deg) translate(190px); }
+.achievement-unlock__burst::after { transform: rotate(-42deg) translate(190px); color: #111; font-size: 2.4rem; }
+@keyframes achievement-screen-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes achievement-backdrop { 0%,8% { opacity: 0; } 12%,82% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes achievement-card { 0% { opacity: 0; transform: rotate(-8deg) scale(.45) translateY(40px); } 9% { opacity: 1; transform: rotate(2deg) scale(1.08) translateY(-8px); } 15% { transform: rotate(-1.5deg) scale(1) translateY(0); } 78% { opacity: 1; transform: rotate(-1.5deg) scale(1) translateY(0); } 100% { opacity: 0; transform: rotate(2deg) scale(.9) translateY(-35px); } }
+@keyframes achievement-icon { 0% { transform: rotate(-18deg) scale(0); } 10% { transform: rotate(10deg) scale(1.2); } 17% { transform: rotate(0) scale(1); } 80% { transform: rotate(0) scale(1); } 100% { transform: rotate(8deg) scale(.85); } }
+@keyframes achievement-shine { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@keyframes achievement-burst { 0% { opacity: 0; transform: scale(.1) rotate(0); } 20% { opacity: 1; transform: scale(1.2) rotate(35deg); } 75% { opacity: .8; transform: scale(1) rotate(110deg); } 100% { opacity: 0; transform: scale(1.7) rotate(160deg); } }
+@media (max-width:600px) { .achievement-unlock__card { padding:18px; box-shadow:8px 8px 0 #111; } .achievement-unlock__content { gap:14px; } .achievement-unlock__icon { flex-basis:78px; width:78px; height:78px; font-size:2.7rem; } }
+@media (prefers-reduced-motion:reduce) { .achievement-unlock *,.achievement-unlock::before { animation-duration:1ms !important; animation-delay:0ms !important; } }
