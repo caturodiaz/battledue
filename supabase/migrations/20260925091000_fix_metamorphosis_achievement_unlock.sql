@@ -28,7 +28,7 @@ begin
   v_won := v_winner_user_id = auth.uid();
   select * into v_result from public.award_battle_xp(auth.uid(), v_won);
   insert into public.battle_xp_rewards (room_id, user_id, experience_gained, total_experience, previous_level, new_level, leveled_up, unlocked_character_ids)
-  values (p_room_id, auth.uid(), v_result.experience_gained, v_result.total_experience, v_result.previous_level, v_result.new_level, v_result.leveled_up, v_result.leveled_up, v_result.unlocked_character_ids);
+  values (p_room_id, auth.uid(), v_result.experience_gained, v_result.total_experience, v_result.previous_level, v_result.new_level, v_result.leveled_up, v_result.unlocked_character_ids);
   perform public.sync_player_achievements(auth.uid());
   if exists (select 1 from jsonb_array_elements(coalesce(v_room.battle_state->'log','[]'::jsonb)) entry where entry->>'user_id' = auth.uid()::text and lower(coalesce(entry->>'action_name','')) in ('metamorfosis','imitación física')) then
     insert into public.player_achievements (user_id, achievement_id) values (auth.uid(), 'metamorphosis') on conflict do nothing;
