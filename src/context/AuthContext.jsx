@@ -12,24 +12,34 @@ export function AuthProvider({ children }) {
   const loadProfile = async (userId) => {
     setProfileLoading(true)
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
 
-    if (error) {
-      console.error('Error loading profile:', error)
-      setProfile(null)
-    } else {
-      setProfile(data)
+      if (error) {
+        console.error('Error loading profile:', error)
+        setProfile(null)
+      } else {
+        setProfile(data)
+      }
+    } finally {
+      setProfileLoading(false)
     }
-
-    setProfileLoading(false)
   }
 
   useEffect(() => {
     let mounted = true
+
+    const scheduleProfileLoad = (userId) => {
+      if (!userId) return
+
+      window.setTimeout(() => {
+        if (mounted) loadProfile(userId)
+      }, 0)
+    }
 
     const initialize = async () => {
       const { data, error } = await supabase.auth.getSession()
@@ -42,31 +52,27 @@ export function AuthProvider({ children }) {
 
       const currentSession = data?.session ?? null
       setSession(currentSession)
+      setLoading(false)
 
       if (currentSession?.user) {
-        await loadProfile(currentSession.user.id)
-      }
-
-      if (mounted) {
-        setLoading(false)
+        scheduleProfileLoad(currentSession.user.id)
       }
     }
 
     initialize()
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, nextSession) => {
+      (_event, nextSession) => {
         if (!mounted) return
 
         setSession(nextSession)
+        setLoading(false)
 
         if (nextSession?.user) {
-          await loadProfile(nextSession.user.id)
+          scheduleProfileLoad(nextSession.user.id)
         } else {
           setProfile(null)
         }
-
-        setLoading(false)
       },
     )
 
