@@ -3,6 +3,7 @@ import {
   playAttackSound,
   playDodgeSound,
   playFullHealingSound,
+  playTokataTransformationSound,
   playVictorySound,
   playLostBattleSound,
 } from '../battle/audio/battleSounds'
@@ -35,6 +36,10 @@ function getOpponentFighter(root, actorUserId) {
 
 function isDodgeMessage(message) {
   return /esquiv(?:ó|o)|evit(?:ó|o)|ataque fue esquivado/i.test(message)
+}
+
+function isTokataTransformationMessage(message) {
+  return /metamorfosis|imitación física/i.test(message)
 }
 
 function showNotification(root, { icon, title, text, type }) {
@@ -132,6 +137,12 @@ function processNewLog(root, newestLog) {
   const target = getOpponentFighter(root, actorUserId)
 
   if (!actor) return
+
+  if (isTokataTransformationMessage(logText)) {
+    playTokataTransformationSound()
+    showNotification(root, { icon: '🪞', title: '¡METAMORFOSIS!', text: logText, type: 'ability' })
+    return
+  }
 
   if (actionType === 'defend') {
     showNotification(root, {
