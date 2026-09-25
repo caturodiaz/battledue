@@ -58,7 +58,10 @@ export default function BattleResultScreen({
       }
 
       const reward = Array.isArray(data) ? data[0] : data
-      if (reward) setPcReward(reward)
+      if (reward) {
+        setPcReward(reward)
+        window.dispatchEvent(new Event('battledue:achievement-event'))
+      }
     }
 
     awardPcXp()
