@@ -3,7 +3,6 @@ import achievementUnlockedAudio from '../assets/sounds/achievement-unlocked-data
 import '../styles/AchievementUnlockNotification.css'
 
 const STORAGE_PREFIX = 'battledue-seen-achievements:'
-const POLL_INTERVAL = 2500
 
 function getSeenIds(userId) {
   try { return new Set(JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${userId}`) || '[]')) } catch { return new Set() }
@@ -26,16 +25,15 @@ export default function AchievementUnlockNotification({ user, supabase }) {
     seenRef.current = getSeenIds(user.id)
     initializedRef.current = false
 
-    async function checkAchievements() {
-      try {
-        const { error: syncError } = await supabase.rpc('sync_player_achievements')
-        if (syncError) return
-      } catch {
-        return
-      }
+    async function loadUnlockedAchievements() {
+      const { data, error } = await supabase
+        .from('player_achievements')
+        .select('achievement_id, unlocked_at')
+        .eq('user_id', user.id)
+        .order('unlocked_at')
 
-      const { data, error } = await supabase.from('player_achievements').select('achievement_id, unlocked_at').eq('user_id', user.id).order('unlocked_at')
       if (!active || error) return
+
       const ids = new Set((data || []).map((item) => item.achievement_id))
       if (!initializedRef.current) {
         seenRef.current = new Set([...seenRef.current, ...ids])
@@ -43,20 +41,82 @@ export default function AchievementUnlockNotification({ user, supabase }) {
         initializedRef.current = true
         return
       }
+
       const newIds = [...ids].filter((id) => !seenRef.current.has(id))
       if (!newIds.length) return
-      const { data: definitions } = await supabase.from('achievements').select('id, name, description, icon').in('id', newIds)
+
+      const { data: definitions } = await supabase
+        .from('achievements')
+        .select('id, name, description, icon')
+        .in('id', newIds)
+
       if (!active) return
-      const definitionMap = new Map((definitions || []).map((achievement) => [achievement.id, achievement]))
-      const unlocked = newIds.map((id) => definitionMap.get(id)).filter(Boolean)
-      seenRef.current = new Set([...seenRef.current, ...newIds])
-      saveSeenIds(user.id, seenRef.current)
-      setQueue((previous) => [...previous, ...unlocked])
+      enqueueAchievements(definitions || [])
     }
 
-    checkAchievements()
-    const interval = window.setInterval(checkAchievements, POLL_INTERVAL)
-    return () => { active = false; window.clearInterval(interval) }
+    function enqueueAchievements(achievements) {
+      const fresh = achievements.filter((achievement) => !seenRef.current.has(achievement.id))
+      if (!fresh.length) return
+
+      seenRef.current = new Set([...seenRef.current, ...fresh.map((achievement) => achievement.id)])
+      saveSeenIds(user.id, seenRef.current)
+      setQueue((previous) => [...previous, ...fresh])
+    }
+
+    async function syncAchievements() {
+      try {
+        await supabase.rpc('sync_player_achievements')
+      } catch {
+        return
+      }
+      await loadUnlockedAchievements()
+    }
+
+    async function handleAchievementInsert(payload) {
+      const achievementId = payload?.new?.achievement_id
+      if (!active || !achievementId || seenRef.current.has(achievementId)) return
+
+      const { data, error } = await supabase
+        .from('achievements')
+        .select('id, name, description, icon')
+        .eq('id', achievementId)
+        .maybeSingle()
+
+      if (!active || error || !data) return
+      enqueueAchievements([data])
+    }
+
+    const channel = supabase
+      .channel(`achievement-unlocks:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'player_achievements',
+          filter: `user_id=eq.${user.id}`,
+        },
+        handleAchievementInsert,
+      )
+      .subscribe()
+
+    syncAchievements()
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') syncAchievements()
+    }
+
+    const handleFocus = () => syncAchievements()
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      active = false
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      supabase.removeChannel(channel)
+    }
   }, [user?.id, supabase])
 
   useEffect(() => {
