@@ -21,6 +21,11 @@ export function getCopyableAbilities(character) {
 export function createTokataTransformation(opponent) {
   if (!opponent) return null
   playTokataTransformationSound()
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('battledue:achievement-event', {
+      detail: { achievementId: 'metamorphosis' },
+    }))
+  }
   return {
     originalCharacterId: TOKATA_ID,
     transformedCharacterId: opponent.id,
