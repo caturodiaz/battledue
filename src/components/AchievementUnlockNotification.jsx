@@ -9,7 +9,9 @@ function getSeenIds(userId) {
   try { return new Set(JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${userId}`) || '[]')) } catch { return new Set() }
 }
 
-function saveSeenIds(userId, ids) { localStorage.setItem(`${STORAGE_PREFIX}${userId}`, JSON.stringify([...ids])) }
+function saveSeenIds(userId, ids) {
+  localStorage.setItem(`${STORAGE_PREFIX}${userId}`, JSON.stringify([...ids]))
+}
 
 export default function AchievementUnlockNotification({ user, supabase }) {
   const [queue, setQueue] = useState([])
@@ -26,7 +28,8 @@ export default function AchievementUnlockNotification({ user, supabase }) {
 
     async function checkAchievements() {
       try {
-        await supabase.rpc('sync_player_achievements')
+        const { error: syncError } = await supabase.rpc('sync_player_achievements')
+        if (syncError) return
       } catch {
         return
       }
@@ -66,7 +69,9 @@ export default function AchievementUnlockNotification({ user, supabase }) {
     if (!current) return undefined
     audioRef.current = new Audio(achievementUnlockedAudio)
     audioRef.current.volume = 0.85
-    audioRef.current.play().catch(() => {})
+    audioRef.current.play().catch((error) => {
+      console.warn('[BattleDue] Achievement sound could not play:', error)
+    })
     const timeout = window.setTimeout(() => setCurrent(null), 5200)
     return () => { window.clearTimeout(timeout); audioRef.current?.pause(); audioRef.current = null }
   }, [current])
