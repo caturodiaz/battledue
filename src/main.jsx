@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './styles/BattleStatusEffects.css'
 import './styles/TokataMetamorphosis.css'
+import './styles/MobileBattleFeedback.css'
 import './onlineBattleTokataEnhancements'
 import App from './App.jsx'
 
