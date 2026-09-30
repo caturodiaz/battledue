@@ -86,7 +86,7 @@
 
   .battle-fighters {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr) !important;
     align-items: stretch !important;
     gap: 0 !important;
     width: 100%;
@@ -98,19 +98,31 @@
     display: flex !important;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    min-width: 34px;
+    width: 30px;
+    min-width: 30px;
     padding: 0;
-    font-size: 0;
+    font-size: 0 !important;
+    line-height: 1;
+    color: #111;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
     z-index: 6;
   }
 
   .battle-fighters > .battle-vs::before {
-    content: '⚔️';
+    content: 'VS';
     display: block;
-    font-size: 20px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 900;
     line-height: 1;
+    color: #111;
+    background: #f4f1e9;
+    border: 2px solid #111;
+    padding: 7px 3px;
     transform: rotate(-8deg);
+    box-shadow: 2px 2px 0 #111;
   }
 
   .battle-character {
@@ -234,15 +246,43 @@
   .battle-turn-badge,
   .battle-defense-badge,
   .battle-healing-banner {
-    transform: scale(.78);
-    transform-origin: center;
+    box-sizing: border-box;
+    max-width: calc(100% - 12px);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .battle-turn-badge { top: 6px !important; }
-  .battle-defense-badge { left: 6px !important; bottom: 6px !important; }
-  .battle-character:has(.battle-status-bleeding) .battle-defense-badge { bottom: 42px !important; }
-  .battle-healing-banner { max-width: 100%; }
+  .battle-turn-badge {
+    top: 6px !important;
+    left: 6px !important;
+    right: 6px !important;
+    width: auto !important;
+    max-width: none;
+    text-align: center;
+    font-size: 9px !important;
+    padding: 5px 4px !important;
+    transform: none !important;
+  }
+
+  .battle-defense-badge {
+    left: 6px !important;
+    right: auto !important;
+    bottom: 6px !important;
+    font-size: 9px !important;
+  }
+
+  .battle-character:has(.battle-status-bleeding) .battle-defense-badge {
+    bottom: 42px !important;
+  }
+
+  .battle-healing-banner {
+    left: 6px !important;
+    right: 6px !important;
+    width: auto !important;
+    transform: none !important;
+    font-size: 8px !important;
+  }
 
   .battle-action-panel {
     margin-top: 10px;
@@ -268,19 +308,23 @@
 
   .battle-action strong {
     display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
     font-size: 12px !important;
+    line-height: 1.1;
   }
 
   .battle-action span {
     display: block;
     margin-top: 3px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
     font-size: 9px !important;
+    line-height: 1.15;
   }
 
   .battle-attack-button {
@@ -335,7 +379,7 @@
   }
 
   .battle-fighters > .battle-vs { width: 28px; min-width: 28px; }
-  .battle-fighters > .battle-vs::before { font-size: 16px; }
+  .battle-fighters > .battle-vs::before { font-size: 10px; padding: 6px 2px; }
 
   .battle-character {
     min-height: 300px;
@@ -345,4 +389,6 @@
   .battle-character-image { min-height: 155px !important; }
   .battle-actions { gap: 5px !important; }
   .battle-action { min-height: 54px; padding: 6px !important; }
+  .battle-action strong { font-size: 11px !important; }
+  .battle-action span { font-size: 8px !important; }
 }
