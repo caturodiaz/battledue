@@ -202,7 +202,6 @@
     object-fit: contain;
   }
 
-  /* Combat feedback: keep the existing JS state classes, but make them readable in the compact arena. */
   .battle-character.is-active {
     z-index: 4;
     transform: translateY(-3px) scale(1.015);
@@ -337,16 +336,127 @@
   .battle-log { margin-top: 10px; }
   .battle-log-entry { font-size: 10px !important; }
 
+  /* Combat choreography: the existing JS notifications become the timing signal. */
+  .battle-notification {
+    pointer-events: none;
+  }
+
+  .battle-notification-attack,
+  .battle-notification-critical,
+  .battle-notification-defend-hit {
+    position: absolute !important;
+    left: 50% !important;
+    top: 43% !important;
+    width: min(78%, 290px) !important;
+    margin: 0 !important;
+    z-index: 20 !important;
+    transform: translate(-50%, -50%) rotate(-2deg) !important;
+    animation: mobileBattleImpact .72s cubic-bezier(.2,.8,.2,1) both !important;
+    box-shadow: 5px 5px 0 #111 !important;
+  }
+
+  .battle-notification-critical {
+    border-width: 3px !important;
+    transform: translate(-50%, -50%) rotate(-4deg) scale(1.04) !important;
+    animation: mobileBattleCriticalImpact .82s cubic-bezier(.2,.8,.2,1) both !important;
+  }
+
+  .battle-notification-attack .battle-notification-content,
+  .battle-notification-critical .battle-notification-content,
+  .battle-notification-defend-hit .battle-notification-content {
+    min-width: 0;
+  }
+
+  .battle-notification-attack .battle-notification-content strong,
+  .battle-notification-critical .battle-notification-content strong,
+  .battle-notification-defend-hit .battle-notification-content strong {
+    font-size: 13px !important;
+  }
+
+  .battle-notification-attack .battle-notification-content span,
+  .battle-notification-critical .battle-notification-content span,
+  .battle-notification-defend-hit .battle-notification-content span {
+    font-size: 11px !important;
+    font-weight: 800;
+  }
+
+  .battle-arena:has(.battle-notification-attack) .battle-character.is-active .battle-character-image img,
+  .battle-arena:has(.battle-notification-defend-hit) .battle-character.is-active .battle-character-image img {
+    animation: mobileBattleLungeLeft .38s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .battle-arena:has(.battle-notification-critical) .battle-character.is-active .battle-character-image img {
+    animation: mobileBattleCriticalLungeLeft .48s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .battle-arena:has(.battle-notification-attack) .battle-character.is-hit .battle-character-image img,
+  .battle-arena:has(.battle-notification-defend-hit) .battle-character.is-hit .battle-character-image img {
+    animation: mobileBattleHit .28s linear both;
+  }
+
+  .battle-arena:has(.battle-notification-critical) .battle-character.is-hit .battle-character-image img {
+    animation: mobileBattleCriticalHit .42s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .battle-notification-miss {
+    position: absolute !important;
+    left: 50% !important;
+    top: 43% !important;
+    z-index: 20 !important;
+    width: min(62%, 230px) !important;
+    transform: translate(-50%, -50%) rotate(3deg) !important;
+    animation: mobileBattleMiss .65s ease-out both !important;
+  }
+
   @keyframes mobileBattleIdle {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-4px); }
   }
 
+  @keyframes mobileBattleLungeLeft {
+    0% { transform: translateX(0) scale(1); }
+    35% { transform: translateX(18px) scale(1.035); }
+    100% { transform: translateX(0) scale(1); }
+  }
+
+  @keyframes mobileBattleCriticalLungeLeft {
+    0% { transform: translateX(0) scale(1); }
+    30% { transform: translateX(22px) scale(1.08); }
+    55% { transform: translateX(10px) scale(1.04); }
+    100% { transform: translateX(0) scale(1); }
+  }
+
   @keyframes mobileBattleHit {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-7px); }
-    50% { transform: translateX(8px); }
-    75% { transform: translateX(-4px); }
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-7px); }
+    40% { transform: translateX(9px); }
+    65% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+  }
+
+  @keyframes mobileBattleCriticalHit {
+    0% { transform: translateX(0) scale(1); filter: none; }
+    25% { transform: translateX(-10px) scale(1.08); filter: brightness(1.45); }
+    50% { transform: translateX(8px) scale(.98); }
+    100% { transform: translateX(0) scale(1); filter: none; }
+  }
+
+  @keyframes mobileBattleImpact {
+    0% { opacity: 0; transform: translate(-50%, -40%) scale(.72) rotate(-5deg); }
+    18% { opacity: 1; transform: translate(-50%, -50%) scale(1.05) rotate(-2deg); }
+    100% { opacity: 0; transform: translate(-50%, -64%) scale(.94) rotate(-2deg); }
+  }
+
+  @keyframes mobileBattleCriticalImpact {
+    0% { opacity: 0; transform: translate(-50%, -42%) scale(.62) rotate(-8deg); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(-4deg); }
+    100% { opacity: 0; transform: translate(-50%, -68%) scale(1) rotate(-4deg); }
+  }
+
+  @keyframes mobileBattleMiss {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(.75) rotate(8deg); }
+    25% { opacity: 1; transform: translate(-50%, -50%) scale(1.05) rotate(3deg); }
+    100% { opacity: 0; transform: translate(-50%, -68%) scale(.9) rotate(3deg); }
   }
 
   @keyframes mobileBattleCritical {
