@@ -1,0 +1,78 @@
+/* Mobile combat feedback: visual layer on top of the existing battle state classes. */
+@media (max-width: 760px) {
+  .battle-character.is-hit .battle-character-image::after {
+    content: '− HP';
+    position: absolute;
+    left: 50%;
+    top: 48%;
+    z-index: 14;
+    pointer-events: none;
+    font-family: inherit;
+    font-size: clamp(22px, 7vw, 32px);
+    font-weight: 1000;
+    line-height: 1;
+    color: #fff;
+    -webkit-text-stroke: 2px #111;
+    text-shadow: 3px 3px 0 #111;
+    transform: translate(-50%, -50%) rotate(-6deg);
+    animation: mobileBattleHpPop .62s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .battle-character.is-critical .battle-character-image::after {
+    content: '💥 CRÍTICO';
+    font-size: clamp(19px, 6vw, 28px);
+    color: #f4f1e9;
+    transform: translate(-50%, -50%) rotate(-8deg) scale(1.04);
+    animation: mobileBattleCriticalPop .72s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .battle-character.is-defending .battle-hp-bar {
+    box-shadow: 0 0 0 2px #111;
+  }
+
+  .battle-hp-fill.hp-is-changing {
+    animation: mobileBattleHpBarFlash .5s ease-out;
+  }
+
+  .battle-hp-value {
+    transition: transform .18s ease;
+  }
+
+  .battle-character.is-hit .battle-hp-value {
+    animation: mobileBattleHpValue .4s ease-out;
+  }
+
+  .battle-character.is-critical .battle-hp-value {
+    animation: mobileBattleCriticalValue .5s ease-out;
+  }
+
+  @keyframes mobileBattleHpPop {
+    0% { opacity: 0; transform: translate(-50%, -30%) scale(.65) rotate(-10deg); }
+    18% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(-6deg); }
+    100% { opacity: 0; transform: translate(-50%, -82%) scale(.9) rotate(-6deg); }
+  }
+
+  @keyframes mobileBattleCriticalPop {
+    0% { opacity: 0; transform: translate(-50%, -35%) scale(.65) rotate(-12deg); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(-8deg); }
+    55% { opacity: 1; transform: translate(-50%, -54%) scale(1.04) rotate(-8deg); }
+    100% { opacity: 0; transform: translate(-50%, -88%) scale(.92) rotate(-8deg); }
+  }
+
+  @keyframes mobileBattleHpBarFlash {
+    0% { filter: brightness(1); transform: scaleY(1); }
+    35% { filter: brightness(1.7); transform: scaleY(1.35); }
+    100% { filter: brightness(1); transform: scaleY(1); }
+  }
+
+  @keyframes mobileBattleHpValue {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(1.22) rotate(-4deg); }
+  }
+
+  @keyframes mobileBattleCriticalValue {
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.35) rotate(-6deg); }
+    60% { transform: scale(1.12) rotate(4deg); }
+  }
+}
