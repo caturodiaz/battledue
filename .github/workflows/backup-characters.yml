@@ -89,6 +89,37 @@ jobs:
           )
           PY
 
+      - name: Remove backups older than 10 days
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          from datetime import date, timedelta
+          from pathlib import Path
+          import shutil
+
+          backups_dir = Path('backups')
+          cutoff = date.today() - timedelta(days=10)
+
+          if not backups_dir.exists():
+              print('No backups directory found.')
+              raise SystemExit(0)
+
+          for path in backups_dir.iterdir():
+              if not path.is_dir():
+                  continue
+
+              try:
+                  backup_date = date.fromisoformat(path.name)
+              except ValueError:
+                  print(f'Skipping unexpected backup directory: {path}')
+                  continue
+
+              if backup_date < cutoff:
+                  print(f'Removing backup older than 10 days: {path}')
+                  shutil.rmtree(path)
+          PY
+
       - name: Commit backup
         run: |
           set -euo pipefail
