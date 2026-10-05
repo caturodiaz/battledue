@@ -21,7 +21,7 @@ test('defend matches the legacy battle-state contract', () => {
   assert.equal(result.processedEvents[0].type, 'ability_used')
 })
 
-test('defend can trigger generic event reactions', () => {
+test('defend can trigger generic event reactions without losing custom resources', () => {
   const state = {
     players: {
       attacker: { hp: 100, max_hp: 100, energy: 0, defending: false },
@@ -36,7 +36,7 @@ test('defend can trigger generic event reactions', () => {
     }],
   })
 
-  assert.equal(result.state.players.attacker.resources, undefined)
-  assert.equal(result.state.players.attacker.exposure, undefined)
+  assert.equal(result.state.players.attacker.resources.exposure, 1)
   assert.equal(result.state.players.attacker.energy, 10)
+  assert.equal(result.state.players.attacker.defending, true)
 })
