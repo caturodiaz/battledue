@@ -1,6 +1,6 @@
-import { applyEffects } from './effects'
-import { appendEventHistory, consumeBattleEvents, queueBattleEvent } from './events'
-import { applyTriggers } from './triggers'
+import { appendEventHistory, consumeBattleEvents, queueBattleEvent } from './events.js'
+import { applyTriggers } from './triggers.js'
+import { resolveEffects } from './resolveEffects.js'
 
 const DEFAULT_MAX_EVENTS = 100
 
@@ -37,6 +37,7 @@ export function executeBattleAction(state, action, options = {}) {
   let nextState = state
   let processedEvents = []
   let processedCount = 0
+  let effectResults = []
 
   const steps = Array.isArray(action.steps)
     ? action.steps
@@ -54,7 +55,9 @@ export function executeBattleAction(state, action, options = {}) {
     }
 
     if (Array.isArray(step.effects)) {
-      nextState = applyEffects(nextState, sourceId, targetId, step.effects)
+      const result = resolveEffects(nextState, sourceId, targetId, step.effects, options)
+      nextState = result.state
+      effectResults = [...effectResults, ...result.results]
     }
 
     const result = processBattleEvents(nextState, sourceId, targetId, triggers, options)
@@ -67,6 +70,7 @@ export function executeBattleAction(state, action, options = {}) {
     state: nextState,
     processedEvents,
     processedCount,
+    effectResults,
   }
 }
 
