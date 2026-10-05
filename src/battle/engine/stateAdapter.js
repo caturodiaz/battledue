@@ -24,12 +24,13 @@ export function fromEngineState(engineState) {
     Object.entries(engineState?.players || {}).map(([id, player]) => {
       const resources = player?.resources || {}
       const flags = player?.flags || {}
-      const { resources: _resources, flags: _flags, ...legacyPlayer } = player
 
       return [
         id,
         {
-          ...legacyPlayer,
+          ...player,
+          resources,
+          flags,
           energy: Math.min(100, Math.max(0, Number(resources.energy) || 0)),
           defending: Boolean(flags.defending),
         },
