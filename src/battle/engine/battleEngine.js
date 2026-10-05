@@ -23,10 +23,7 @@ export function processBattleEvents(state, sourceId, targetId, triggers = [], op
   }
 
   nextState = appendEventHistory(nextState, processedEvents)
-  return {
-    state: nextState,
-    processedEvents,
-  }
+  return { state: nextState, processedEvents }
 }
 
 export function executeBattleAction(state, action, options = {}) {
@@ -36,33 +33,41 @@ export function executeBattleAction(state, action, options = {}) {
 
   const sourceId = action.sourceId
   const targetId = action.targetId
+  const triggers = action.triggers || []
   let nextState = state
+  let processedEvents = []
+  let processedCount = 0
 
-  if (action.beforeEffects) {
-    nextState = applyEffects(nextState, sourceId, targetId, action.beforeEffects)
+  const steps = Array.isArray(action.steps)
+    ? action.steps
+    : [
+        ...(action.beforeEffects ? [{ effects: action.beforeEffects }] : []),
+        ...(action.events ? [{ events: action.events }] : []),
+        ...(action.effects ? [{ effects: action.effects }] : []),
+      ]
+
+  for (const step of steps) {
+    if (Array.isArray(step.events)) {
+      for (const event of step.events) {
+        nextState = queueBattleEvent(nextState, event.type, event.payload)
+      }
+    }
+
+    if (Array.isArray(step.effects)) {
+      nextState = applyEffects(nextState, sourceId, targetId, step.effects)
+    }
+
+    const result = processBattleEvents(nextState, sourceId, targetId, triggers, options)
+    nextState = result.state
+    processedEvents = [...processedEvents, ...result.processedEvents]
+    processedCount += result.processedEvents.length
   }
 
-  for (const event of action.events || []) {
-    nextState = queueBattleEvent(nextState, event.type, event.payload)
+  return {
+    state: nextState,
+    processedEvents,
+    processedCount,
   }
-
-  if (action.effects) {
-    nextState = applyEffects(nextState, sourceId, targetId, action.effects)
-  }
-
-  const result = processBattleEvents(
-    nextState,
-    sourceId,
-    targetId,
-    action.triggers || [],
-    options,
-  )
-
-  if (action.afterEffects) {
-    result.state = applyEffects(result.state, sourceId, targetId, action.afterEffects)
-  }
-
-  return result
 }
 
 export function createBattleState(players = {}) {
