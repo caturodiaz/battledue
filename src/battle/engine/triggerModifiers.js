@@ -1,4 +1,4 @@
-import { evaluateCondition } from './triggers.js'
+import { evaluateCondition } from './conditions.js'
 
 export function collectDamageModifiers(state, event, triggers = []) {
   return triggers.reduce((modifiers, trigger) => {
