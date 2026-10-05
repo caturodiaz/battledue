@@ -52,6 +52,37 @@ test('processes steps in order so before-damage triggers can react before damage
   )
 })
 
+test('allows a trigger to emit a follow-up event that another trigger can process', () => {
+  const state = createBattleState({
+    weyker: { hp: 100, resources: {} },
+    enemy: { hp: 100, resources: {} },
+  })
+
+  const result = executeBattleAction(state, {
+    sourceId: 'weyker',
+    targetId: 'enemy',
+    steps: [{ events: [{ type: 'ability_used' }] }],
+    triggers: [
+      {
+        event: 'ability_used',
+        effects: [{ type: 'resource_add', target: 'source', resource: 'exposure', value: 1 }],
+        events: [{ type: 'exposure_gained', payload: { amount: 1 } }],
+      },
+      {
+        event: 'exposure_gained',
+        effects: [{ type: 'flag_set', target: 'source', flag: 'has_photo', value: true }],
+      },
+    ],
+  })
+
+  assert.equal(result.state.players.weyker.resources.exposure, 1)
+  assert.equal(result.state.players.weyker.flags.has_photo, true)
+  assert.deepEqual(
+    result.processedEvents.map((event) => event.type),
+    ['ability_used', 'exposure_gained'],
+  )
+})
+
 test('enforces the configured event processing limit', () => {
   const state = createBattleState({
     a: { hp: 100 },
