@@ -1,4 +1,5 @@
 import { executeBattleAction } from './battleEngine'
+import { fromEngineState, toEngineState } from './stateAdapter'
 
 export const BASIC_ACTIONS = Object.freeze({
   defend: {
@@ -17,12 +18,13 @@ export const BASIC_ACTIONS = Object.freeze({
   },
 })
 
-export function executeBasicAction(state, sourceId, targetId, actionType, options = {}) {
+export function executeBasicAction(legacyState, sourceId, targetId, actionType, options = {}) {
   const action = BASIC_ACTIONS[actionType]
   if (!action) throw new Error(`Unsupported basic action: ${actionType}`)
 
-  return executeBattleAction(
-    state,
+  const engineState = toEngineState(legacyState)
+  const result = executeBattleAction(
+    engineState,
     {
       sourceId,
       targetId,
@@ -31,4 +33,9 @@ export function executeBasicAction(state, sourceId, targetId, actionType, option
     },
     options,
   )
+
+  return {
+    ...result,
+    state: fromEngineState(result.state),
+  }
 }
