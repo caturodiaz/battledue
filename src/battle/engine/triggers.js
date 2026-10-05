@@ -1,4 +1,5 @@
 import { applyEffects } from './effects'
+import { queueBattleEvent } from './events'
 
 function getUnit(state, unitId) {
   return state?.players?.[unitId] || {}
@@ -43,13 +44,23 @@ export function triggerMatchesEvent(trigger, event) {
   return Boolean(trigger && event && trigger.event === event.type)
 }
 
+function applyTrigger(state, sourceId, targetId, trigger) {
+  let nextState = applyEffects(state, sourceId, targetId, trigger.effects || [])
+
+  for (const event of trigger.events || []) {
+    nextState = queueBattleEvent(nextState, event.type, event.payload)
+  }
+
+  return nextState
+}
+
 export function applyTriggers(state, sourceId, targetId, event, triggers = []) {
   if (!event || !Array.isArray(triggers)) return state
 
   return triggers.reduce((currentState, trigger) => {
     if (!triggerMatchesEvent(trigger, event)) return currentState
     if (!matchesCondition(currentState, sourceId, targetId, trigger.condition || {})) return currentState
-    return applyEffects(currentState, sourceId, targetId, trigger.effects || [])
+    return applyTrigger(currentState, sourceId, targetId, trigger)
   }, state)
 }
 
