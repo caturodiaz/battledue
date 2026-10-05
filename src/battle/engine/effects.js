@@ -33,7 +33,7 @@ export function applyEffect(state, sourceId, targetId, effect) {
   if (!resolvedTargetId) return state
 
   const unit = getUnit(state, resolvedTargetId)
-  let nextUnit = unit
+  let nextUnit
 
   switch (type) {
     case 'damage': {
