@@ -56,8 +56,8 @@ export function evaluateCondition(state, sourceId, targetId, condition = {}, con
     if (getResource(target, resource) < Number(value)) return false
   }
 
-  if (condition.isDefending === true && !Boolean(source.defending || source.flags?.defending)) return false
-  if (condition.targetIsDefending === true && !Boolean(target.defending || target.flags?.defending)) return false
+  if (condition.isDefending === true && !(source.defending || source.flags?.defending)) return false
+  if (condition.targetIsDefending === true && !(target.defending || target.flags?.defending)) return false
   if (condition.critical === true && context.critical !== true) return false
   if (condition.ultimate === true && context.ultimate !== true) return false
 
