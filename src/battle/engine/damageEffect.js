@@ -1,6 +1,6 @@
-import { calculateDamage, calculateEnergyGain } from './damage'
-import { applyEffect } from './effects'
-import { queueBattleEvent } from './events'
+import { calculateDamage, calculateEnergyGain } from './damage.js'
+import { applyEffect } from './effects.js'
+import { queueBattleEvent } from './events.js'
 
 export function resolveDamageEffect(state, sourceId, targetId, effect = {}, context = {}) {
   const attacker = state?.players?.[sourceId] || {}
