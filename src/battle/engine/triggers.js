@@ -1,5 +1,5 @@
-import { applyEffects } from './effects'
-import { queueBattleEvent } from './events'
+import { applyEffects } from './effects.js'
+import { queueBattleEvent } from './events.js'
 
 function getUnit(state, unitId) {
   return state?.players?.[unitId] || {}
