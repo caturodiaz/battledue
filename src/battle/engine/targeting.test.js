@@ -22,7 +22,7 @@ test('resolves team targeting', () => {
 })
 
 test('resolves area targeting around an explicit target', () => {
-  assert.deepEqual(resolveTargets(state, 'a', { mode: 'area', targetId: 'b', radius: 3 }), ['b'])
+  assert.deepEqual(resolveTargets(state, 'a', { mode: 'area', targetId: 'b', radius: 3 }), ['b', 'c'])
 })
 
 test('resolves explicit target lists', () => {
