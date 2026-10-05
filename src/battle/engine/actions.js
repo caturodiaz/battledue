@@ -1,5 +1,5 @@
-import { executeBattleAction } from './battleEngine'
-import { fromEngineState, toEngineState } from './stateAdapter'
+import { executeBattleAction } from './battleEngine.js'
+import { fromEngineState, toEngineState } from './stateAdapter.js'
 
 export const BASIC_ACTIONS = Object.freeze({
   defend: {
