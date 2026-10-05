@@ -1,10 +1,12 @@
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
 export function calculateBaseDamage(attackerStats = {}) {
-  return 4.8
+  const damage = 4.8
     + Number(attackerStats.strength || 0) * 2
     + Number(attackerStats.range || 0) * 0.8
     + Number(attackerStats.control || 0) * 0.5
+
+  return Number(damage.toFixed(10))
 }
 
 export function calculateDamage({ attackerStats = {}, defenderStats = {}, multiplier = 1, randomFactor = 1, critical = false, defending = false }) {
