@@ -1,7 +1,7 @@
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
 export function calculateBaseDamage(attackerStats = {}) {
-  return 6
+  return 4.8
     + Number(attackerStats.strength || 0) * 2
     + Number(attackerStats.range || 0) * 0.8
     + Number(attackerStats.control || 0) * 0.5
@@ -13,7 +13,7 @@ export function calculateDamage({ attackerStats = {}, defenderStats = {}, multip
   if (critical) damage *= 1.7
 
   const defense = Number(defenderStats.defense || 0)
-  damage *= 1 - clamp(defense * 0.04, 0, 0.5)
+  damage *= 1 - clamp(defense * 0.06, 0, 0.5)
 
   if (defending) damage *= 0.5
 
