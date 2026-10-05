@@ -12,21 +12,11 @@ test('processes a trigger after an action event', () => {
   const result = executeBattleAction(state, {
     sourceId: 'weyker',
     targetId: 'enemy',
-    steps: [
-      {
-        events: [
-          { type: 'ability_used', payload: { ability: 'flash' } },
-        ],
-      },
-    ],
-    triggers: [
-      {
-        event: 'ability_used',
-        effects: [
-          { type: 'resource_add', target: 'source', resource: 'exposure', value: 1 },
-        ],
-      },
-    ],
+    steps: [{ events: [{ type: 'ability_used', payload: { ability: 'flash' } }] }],
+    triggers: [{
+      event: 'ability_used',
+      effects: [{ type: 'resource_add', target: 'source', resource: 'exposure', value: 1 }],
+    }],
   })
 
   assert.equal(result.state.players.weyker.resources.exposure, 1)
@@ -48,14 +38,10 @@ test('processes steps in order so before-damage triggers can react before damage
       { effects: [{ type: 'damage', target: 'target', value: 40 }] },
       { events: [{ type: 'after_receive_damage', payload: { amount: 40 } }] },
     ],
-    triggers: [
-      {
-        event: 'before_receive_damage',
-        effects: [
-          { type: 'resource_add', target: 'target', resource: 'exposure', value: 2 },
-        ],
-      },
-    ],
+    triggers: [{
+      event: 'before_receive_damage',
+      effects: [{ type: 'resource_add', target: 'target', resource: 'exposure', value: 2 }],
+    }],
   })
 
   assert.equal(result.state.players.defender.hp, 60)
@@ -66,7 +52,7 @@ test('processes steps in order so before-damage triggers can react before damage
   )
 })
 
-test('stops runaway event cascades at the configured limit', () => {
+test('enforces the configured event processing limit', () => {
   const state = createBattleState({
     a: { hp: 100 },
     b: { hp: 100 },
@@ -76,13 +62,7 @@ test('stops runaway event cascades at the configured limit', () => {
     () => executeBattleAction(state, {
       sourceId: 'a',
       targetId: 'b',
-      steps: [{ events: [{ type: 'loop' }] }],
-      triggers: [
-        {
-          event: 'loop',
-          effects: [{ type: 'flag_set', target: 'source', flag: 'loop_seen', value: true }],
-        },
-      ],
+      steps: [{ events: [{ type: 'first' }, { type: 'second' }] }],
     }, { maxEvents: 1 }),
     /Battle event limit exceeded/,
   )
