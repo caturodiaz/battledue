@@ -53,17 +53,26 @@ export function applyEffect(state, sourceId, targetId, effect) {
 
     case 'resource_add': {
       const resource = effect.resource || 'energy'
-      const resources = { ...(unit.resources || {}) }
-      resources[resource] = (Number(resources[resource]) || 0) + (Number(effect.value) || 0)
-      nextUnit = { ...unit, resources }
+      const amount = Number(effect.value) || 0
+      if (unit.resources && typeof unit.resources === 'object') {
+        const resources = { ...unit.resources }
+        resources[resource] = (Number(resources[resource]) || 0) + amount
+        nextUnit = { ...unit, resources }
+      } else {
+        nextUnit = { ...unit, [resource]: (Number(unit[resource]) || 0) + amount }
+      }
       break
     }
 
     case 'resource_set': {
       const resource = effect.resource || 'energy'
-      const resources = { ...(unit.resources || {}) }
-      resources[resource] = Number(effect.value) || 0
-      nextUnit = { ...unit, resources }
+      const value = Number(effect.value) || 0
+      if (unit.resources && typeof unit.resources === 'object') {
+        const resources = { ...unit.resources, [resource]: value }
+        nextUnit = { ...unit, resources }
+      } else {
+        nextUnit = { ...unit, [resource]: value }
+      }
       break
     }
 
