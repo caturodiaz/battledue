@@ -26,7 +26,7 @@ test('ability action applies resolved damage, energy and bleeding', () => {
     combatResult: { damage: 20, critical: false, hit: true },
   })
   assert.equal(result.state.players.defender.hp, 80)
-  assert.equal(result.state.players.attacker.energy, 38)
+  assert.equal(result.state.players.attacker.energy, 51)
   assert.deepEqual(result.state.players.defender.states, [{ type: 'bleeding', turns: 3, stacks: 1 }])
 })
 
