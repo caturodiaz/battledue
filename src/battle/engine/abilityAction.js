@@ -27,10 +27,9 @@ export function executeAbilityAction(legacyState, sourceId, targetId, options = 
     value: Math.max(0, Math.min(100, Number(energy) || 0)),
   })
 
-  if (hit) {
-    effects.push({ type: 'battle_state_decrement_all' })
+  effects.push({ type: 'battle_state_decrement_all' })
 
-    if (battleEffect && battleEffect.type && battleEffect.type !== 'heal_self' && battleEffect.type !== 'full_heal_self') {
+  if (hit && battleEffect && battleEffect.type && battleEffect.type !== 'heal_self' && battleEffect.type !== 'full_heal_self') {
       effects.push({
         type: 'battle_state_add',
         target: battleEffect.target || 'enemy',
