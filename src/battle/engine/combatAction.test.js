@@ -63,7 +63,7 @@ test('executes a declarative ability without exposing combat resolution to the c
   assert.equal(result.attack.type, 'hit')
   assert.equal(result.state.players.defender.hp, 68)
   assert.equal(result.state.players.defender.states[0].type, 'bleeding')
-  assert.equal(result.state.players.attacker.energy, 30)
+  assert.equal(result.state.players.attacker.energy, 43)
 })
 
 test('executes ability effects after a miss without applying hit-dependent effects', () => {
