@@ -5,6 +5,7 @@ export { createBattleState, processBattleEvents, executeBattleAction, clearBattl
 export { toEngineState, fromEngineState } from './stateAdapter.js'
 export { BASIC_ACTIONS, executeBasicAction } from './actions.js'
 export { BASIC_ATTACK, executeBasicAttack } from './attackAction.js'
+export { resolveAttackState } from './attackState.js'
 export { endBattleTurn } from './turn.js'
 export { startBattleTurn } from './turnStart.js'
 export { executeAbilityAction } from './abilityAction.js'
