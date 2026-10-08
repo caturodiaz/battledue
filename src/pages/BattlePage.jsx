@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCharacters } from '../hooks/useCharacters'
 import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
@@ -206,12 +206,12 @@ function BattlePage() {
     if (finishBattleTimeoutRef.current) clearTimeout(finishBattleTimeoutRef.current)
   }, [])
 
-  function addLog(text, type = 'attack', notification = null) {
+  const addLog = useCallback((text, type = 'attack', notification = null) => {
     setBattleLog(previousLog => [...previousLog, { id: crypto.randomUUID(), type, text }])
     if (notification) setBattleNotification({ id: crypto.randomUUID(), ...notification })
-  }
+  }, [])
 
-  function finishBattle(winner, loser, reason = '') {
+  const finishBattle = useCallback((winner, loser, reason = '') => {
     if (!winner || !loser) return
     if (finishBattleTimeoutRef.current) clearTimeout(finishBattleTimeoutRef.current)
     setWinnerId(winner.id)
@@ -230,7 +230,7 @@ function BattlePage() {
       setIsProcessingTurn(false)
       finishBattleTimeoutRef.current = null
     }, BATTLE_FINISH_DELAY)
-  }
+  }, [addLog, playerId])
 
   function startBattle() {
     if (!characterA || !characterB || characterA.id === characterB.id) return
@@ -283,7 +283,7 @@ function BattlePage() {
     processedTurnRef.current = null
   }
 
-  async function performAction(actionOverride = null) {
+  const performAction = useCallback(async (actionOverride = null) => {
     if (!battleStarted || isBattleFinished || battlePhase !== 'fighting' || isProcessingTurn || !currentAttacker || !currentDefender) return
     const action = actionOverride || selectedAction
     if (typeof action !== 'string') { console.error('⚠️ Acción inválida:', action); return }
@@ -533,7 +533,26 @@ function BattlePage() {
       setTokataMetamorphosisCooldown(previous => Math.max(0, previous - 1))
     }
     setTimeout(() => setIsProcessingTurn(false), 350)
-  }
+  }, [
+    addLog,
+    battlePhase,
+    battleStarted,
+    battleStates,
+    characterAId,
+    currentAttacker,
+    currentDefender,
+    currentAbilities,
+    currentEnergy,
+    defending,
+    finishBattle,
+    hp,
+    isBattleFinished,
+    isProcessingTurn,
+    selectedAction,
+    tokataMetamorphosisCooldown,
+    tokataTransformation,
+    turn,
+  ])
 
   useEffect(() => {
     performActionRef.current = performAction
