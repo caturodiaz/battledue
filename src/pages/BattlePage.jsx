@@ -4,7 +4,7 @@ import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
 import BattleResultScreen from '../components/BattleResultScreen'
 import { getBattleStateInfo } from '../battle/battleStateInfo'
-import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, getAbilityBattleEffect, resolveCombatAttack, startBattleTurn } from '../battle/engine'
+import { createAbilityAction, endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, resolveCombatAttack, startBattleTurn } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -152,6 +152,11 @@ function BattlePage() {
   const characterADisplay = getTokataDisplayCharacter({ character: characterA, transformation: tokataTransformation })
   const currentEnergy = currentAttacker ? energy[currentAttacker.id] || 0 : 0
   const currentAbilities = getTokataAbilities({ character: currentAttacker, transformation: currentAttackerTransformation, metamorphosisAvailable: tokataMetamorphosisCooldown <= 0 })
+  const currentAbilityActions = useMemo(() => currentAbilities.map((ability, index) => createAbilityAction(ability, { index })), [currentAbilities])
+  const currentUltimateAction = createAbilityAction({
+    name: currentAttacker?.profile?.ultimateName,
+    battleEffect: currentAttacker?.profile?.ultimateBattleEffect,
+  }, { kind: 'ultimate' })
 
   useEffect(() => {
     if (characters.length < 2 || characterAId || characterBId) return
@@ -358,17 +363,22 @@ function BattlePage() {
     let guaranteedHit = false
     let criticalBonus = 0
     let actionType = 'attack'
-    let abilityBattleEffect = null
-    let ultimateBattleEffect = null
+    let selectedBattleEffect = null
+    let dealsDamage = true
 
     if (action === 'ultimate') {
-      if (currentEnergy < 100) return
-      actionName = currentAttacker.profile?.ultimateName || 'Técnica definitiva'
-      ultimateBattleEffect = currentAttacker.profile?.ultimateBattleEffect || null
-      multiplier = ultimateBattleEffect?.type === 'full_heal_self' ? 0 : 3
-      energyCost = 100
-      guaranteedHit = true
-      criticalBonus = 15
+      const ultimateAction = createAbilityAction({
+        name: currentAttacker.profile?.ultimateName,
+        battleEffect: currentAttacker.profile?.ultimateBattleEffect,
+      }, { kind: 'ultimate' })
+      if (currentEnergy < ultimateAction.energyCost) return
+      actionName = ultimateAction.name
+      selectedBattleEffect = ultimateAction.battleEffect
+      multiplier = ultimateAction.multiplier
+      energyCost = ultimateAction.energyCost
+      guaranteedHit = ultimateAction.guaranteedHit
+      criticalBonus = ultimateAction.criticalBonus
+      dealsDamage = ultimateAction.dealsDamage
       actionType = 'ultimate'
     } else if (action === 'metamorphosis') {
       if (!canUseMetamorphosis({ character: currentAttacker, opponent: currentDefender }) || tokataMetamorphosisCooldown > 0) return
@@ -421,12 +431,15 @@ function BattlePage() {
         setTimeout(() => setIsProcessingTurn(false), 500)
         return
       }
-      abilityBattleEffect = getAbilityBattleEffect(ability)
-      actionName = ability.name || 'Habilidad'
-      energyCost = 25
+      const abilityAction = createAbilityAction(ability, { index: abilityIndex })
+      actionName = abilityAction.name
+      selectedBattleEffect = abilityAction.battleEffect
+      energyCost = abilityAction.energyCost
       if (currentEnergy < energyCost) return
-      multiplier = 1.45 + abilityIndex * 0.15
-      criticalBonus = 5
+      multiplier = abilityAction.multiplier
+      guaranteedHit = abilityAction.guaranteedHit
+      criticalBonus = abilityAction.criticalBonus
+      dealsDamage = abilityAction.dealsDamage
       actionType = 'ability'
     }
 
@@ -464,6 +477,7 @@ function BattlePage() {
       criticalBonus,
       energyCost,
       ultimate: action === 'ultimate',
+      skipDamage: !dealsDamage,
     })
     const wasDefending = result.defending
     if (result.type !== 'miss') playAttackSound({ attacker: currentAttacker, defenderIsDefending: wasDefending })
@@ -481,7 +495,7 @@ function BattlePage() {
     }
 
     if (action.startsWith('ability-') || action === 'ultimate') {
-      const effect = action === 'ultimate' ? ultimateBattleEffect : abilityBattleEffect
+      const effect = selectedBattleEffect
       const abilityEngineResult = executeAbilityAction(
         result.state,
         currentAttacker.id,
@@ -654,11 +668,11 @@ function BattlePage() {
             {isEnemyThinking && <div className="battle-enemy-thinking">🤖 {currentAttackerDisplay?.name} está pensando...</div>}
             <div className="battle-actions">
               <button className={selectedAction === 'basic' ? 'battle-action active' : 'battle-action'} type="button" disabled={!isPlayerTurn || isEnemyThinking} onClick={() => setSelectedAction('basic')}><strong>⚔️ Ataque</strong><span>Ataque básico</span></button>
-              {currentAbilities.map((ability, index) => { const actionId = `ability-${index}`; const metamorphosis = isMetamorphosisAbility(ability); const disabled = !isPlayerTurn || isEnemyThinking || currentEnergy < (metamorphosis ? 0 : 25) || (metamorphosis && tokataMetamorphosisCooldown > 0); return <button className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} type="button" key={ability.id || actionId} disabled={disabled} onClick={() => setSelectedAction(actionId)}><strong>{metamorphosis ? '🦎' : '✨'} {ability.name || `Habilidad ${index + 1}`}</strong><span>{metamorphosis ? (tokataMetamorphosisCooldown > 0 ? `Disponible en ${tokataMetamorphosisCooldown} turnos` : 'Transforma al oponente actual') : '25 energía'}</span></button> })}
-              <button className={`battle-action battle-action-ultimate ${selectedAction === 'ultimate' ? 'active' : ''} ${currentEnergy >= 100 ? 'is-ready' : ''}`} type="button" disabled={!isPlayerTurn || isEnemyThinking || currentEnergy < 100} onClick={() => setSelectedAction('ultimate')}><strong>⚡ {currentAttacker?.profile?.ultimateName || 'Técnica definitiva'}</strong><span>{currentEnergy >= 100 ? '¡LISTA!' : `${Math.round(currentEnergy)}% de energía`}</span></button>
+              {currentAbilities.map((ability, index) => { const actionId = `ability-${index}`; const metamorphosis = isMetamorphosisAbility(ability); const abilityAction = currentAbilityActions[index]; const disabled = !isPlayerTurn || isEnemyThinking || currentEnergy < (metamorphosis ? 0 : abilityAction.energyCost) || (metamorphosis && tokataMetamorphosisCooldown > 0); return <button className={selectedAction === actionId ? 'battle-action active' : 'battle-action'} type="button" key={ability.id || actionId} disabled={disabled} onClick={() => setSelectedAction(actionId)}><strong>{metamorphosis ? '🦎' : '✨'} {ability.name || `Habilidad ${index + 1}`}</strong><span>{metamorphosis ? (tokataMetamorphosisCooldown > 0 ? `Disponible en ${tokataMetamorphosisCooldown} turnos` : 'Transforma al oponente actual') : `${abilityAction.energyCost} energía`}</span></button> })}
+              <button className={`battle-action battle-action-ultimate ${selectedAction === 'ultimate' ? 'active' : ''} ${currentEnergy >= currentUltimateAction.energyCost ? 'is-ready' : ''}`} type="button" disabled={!isPlayerTurn || isEnemyThinking || currentEnergy < currentUltimateAction.energyCost} onClick={() => setSelectedAction('ultimate')}><strong>⚡ {currentUltimateAction.name}</strong><span>{currentEnergy >= currentUltimateAction.energyCost ? '¡LISTA!' : `${Math.round(currentEnergy)}% de energía`}</span></button>
               <button className={selectedAction === 'defend' ? 'battle-action battle-action-defend active' : 'battle-action battle-action-defend'} type="button" disabled={!isPlayerTurn || isEnemyThinking} onClick={() => setSelectedAction('defend')}><strong>🛡️ Defender</strong><span>-50% próximo daño</span></button>
             </div>
-            <button className="button battle-attack-button" type="button" disabled={isProcessingTurn || isEnemyThinking || (selectedAction === 'ultimate' && currentEnergy < 100) || (selectedAction.startsWith('ability-') && currentAbilities[Number(selectedAction.replace('ability-', ''))] && !isMetamorphosisAbility(currentAbilities[Number(selectedAction.replace('ability-', ''))]) && currentEnergy < 25)} onClick={() => performAction()}>{isProcessingTurn ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar técnica definitiva' : selectedAction.startsWith('ability-') ? `✨ ${isMetamorphosisAbility(currentAbilities[Number(selectedAction.replace('ability-', ''))]) ? 'Usar Metamorfosis' : 'Usar habilidad'}` : '⚔️ Atacar'}</button>
+            <button className="button battle-attack-button" type="button" disabled={isProcessingTurn || isEnemyThinking || (selectedAction === 'ultimate' && currentEnergy < currentUltimateAction.energyCost) || (selectedAction.startsWith('ability-') && currentAbilityActions[Number(selectedAction.replace('ability-', ''))] && !isMetamorphosisAbility(currentAbilities[Number(selectedAction.replace('ability-', ''))]) && currentEnergy < currentAbilityActions[Number(selectedAction.replace('ability-', ''))].energyCost)} onClick={() => performAction()}>{isProcessingTurn ? '⚔️ Resolviendo...' : selectedAction === 'defend' ? '🛡️ Defender' : selectedAction === 'ultimate' ? '⚡ Usar técnica definitiva' : selectedAction.startsWith('ability-') ? `✨ ${isMetamorphosisAbility(currentAbilities[Number(selectedAction.replace('ability-', ''))]) ? 'Usar Metamorfosis' : 'Usar habilidad'}` : '⚔️ Atacar'}</button>
           </div>}
 
           {battlePhase === 'result' && (() => {

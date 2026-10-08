@@ -30,6 +30,22 @@ export function resolveCombatAttack(state, sourceId, targetId, options = {}) {
   const criticalBonus = Number(options.criticalBonus) || 0
   const ultimate = Boolean(options.ultimate)
 
+  if (options.skipDamage) {
+    return {
+      state,
+      hit: true,
+      type: 'hit',
+      damage: 0,
+      unblockedDamage: 0,
+      critical: false,
+      accuracy: 100,
+      reason: null,
+      message: null,
+      defending: false,
+      energy: clamp((Number(source.energy) || 0) - Math.max(0, Number(options.energyCost) || 0), 0, 100),
+    }
+  }
+
   const accuracy = clamp(
     72 + (Number(attackerStats.control) || 0) * 3 + (Number(attackerStats.range) || 0) - (Number(defenderStats.speed) || 0) * 2,
     50,

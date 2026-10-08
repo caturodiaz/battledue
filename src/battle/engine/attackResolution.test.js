@@ -52,3 +52,14 @@ test('does not apply damage when evasion succeeds and grants miss energy', () =>
   assert.equal(result.energy, 8)
   assert.deepEqual(result.state.players.defender.states, [])
 })
+
+test('resolves a non-damaging ability without hit rolls or energy gain', () => {
+  const result = resolveCombatAttack(state(), 'attacker', 'defender', {
+    energyCost: 25,
+    skipDamage: true,
+  })
+
+  assert.equal(result.type, 'hit')
+  assert.equal(result.damage, 0)
+  assert.equal(result.energy, 0)
+})
