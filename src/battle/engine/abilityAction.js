@@ -70,9 +70,14 @@ function executeDeclarativeAbility(legacyState, sourceId, targetId, ability, opt
     },
   )
 
+  const finalState = fromEngineState(result.state)
+  const initialHp = Number(legacyState?.players?.[sourceId]?.hp) || 0
+  const finalHp = Number(finalState?.players?.[sourceId]?.hp) || 0
+
   return {
     ...result,
-    state: fromEngineState(result.state),
+    healing: Math.max(0, finalHp - initialHp),
+    state: finalState,
   }
 }
 
