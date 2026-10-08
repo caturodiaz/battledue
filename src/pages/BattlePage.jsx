@@ -4,7 +4,7 @@ import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
 import BattleResultScreen from '../components/BattleResultScreen'
 import { getBattleStateInfo } from '../battle/battleStateInfo'
-import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, getAbilityBattleEffect, resolveAttackState, startBattleTurn } from '../battle/engine'
+import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, getAbilityBattleEffect, resolveCombatAttack, startBattleTurn } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -24,7 +24,6 @@ import {
 
 const BASE_HP = 100
 const MAX_ENERGY = 100
-const DEFENSE_DAMAGE_REDUCTION = 0.5
 const BATTLE_FINISH_DELAY = 2200
 const TOKATA_METAMORPHOSIS_COOLDOWN = 3
 
@@ -59,25 +58,6 @@ function getTurnOrder(characterA, characterB) {
   if (speedA > speedB) return [characterA, characterB]
   if (speedB > speedA) return [characterB, characterA]
   return Math.random() < 0.5 ? [characterA, characterB] : [characterB, characterA]
-}
-
-function calculateAttack({ attacker, defender, multiplier = 1, guaranteedHit = false, criticalBonus = 0 }) {
-  const attackerStats = getStats(attacker)
-  const defenderStats = getStats(defender)
-  const accuracy = Math.max(50, Math.min(97, 72 + attackerStats.control * 3 + attackerStats.range - defenderStats.speed * 2))
-  const hit = guaranteedHit || Math.random() * 100 <= accuracy
-  if (!hit) return { type: 'miss', damage: 0, accuracy, critical: false }
-
-  const baseDamage = 6 + attackerStats.strength * 2 + attackerStats.range * 0.8 + attackerStats.control * 0.5
-  const variation = 0.8 + Math.random() * 0.4
-  let damage = baseDamage * variation * multiplier
-  const criticalChance = Math.min(40, 8 + attackerStats.control * 2 + criticalBonus)
-  const critical = Math.random() * 100 < criticalChance
-  if (critical) damage *= 1.7
-  const defenseReduction = Math.min(0.5, defenderStats.defense * 0.04)
-  damage *= 1 - defenseReduction
-  damage = Math.max(1, Math.round(damage))
-  return { type: critical ? 'critical' : 'hit', damage, accuracy, critical }
 }
 
 function getPcBattleStats(battleLog, playerName, enemyName, rounds) {
@@ -478,51 +458,38 @@ function BattlePage() {
       combat_events: [],
       event_history: [],
     }
-    const baseResult = calculateAttack({ attacker: currentAttacker, defender: currentDefender, multiplier, guaranteedHit, criticalBonus })
-    const stateResult = resolveAttackState(engineState, currentAttacker.id, currentDefender.id, baseResult.damage)
-    const result = { ...baseResult, damage: stateResult.damage, type: stateResult.hit ? baseResult.type : 'miss', stateReason: stateResult.reason, stateMessage: stateResult.message }
-    const wasDefending = defending[currentDefender.id] || false
+    const result = resolveCombatAttack(engineState, currentAttacker.id, currentDefender.id, {
+      multiplier,
+      guaranteedHit,
+      criticalBonus,
+      energyCost,
+      ultimate: action === 'ultimate',
+    })
+    const wasDefending = result.defending
     if (result.type !== 'miss') playAttackSound({ attacker: currentAttacker, defenderIsDefending: wasDefending })
     setCombatEffect(result.type)
     setTimeout(() => setCombatEffect(null), 550)
-    if (action !== 'basic' && !action.startsWith('ability-')) {
-      const newEnergy = Math.max(0, currentEnergy - energyCost + (action === 'ultimate' ? 0 : result.type === 'miss' ? 8 : result.critical ? 18 : 13))
-      if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
-      setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: Math.min(MAX_ENERGY, newEnergy) }))
-    }
-
     if (result.type === 'miss') {
       playDodgeSound()
-      addLog(stateResult.message || `💨 ${currentDefender.name} esquiva ${actionName} de ${currentAttacker.name}.`, 'miss', { icon: '💨', title: '¡ESQUIVÓ EL ATAQUE!', text: `${currentDefender.name} evitó el ataque de ${currentAttacker.name}`, type: 'miss' })
+      addLog(result.message || `💨 ${currentDefender.name} esquiva ${actionName} de ${currentAttacker.name}.`, 'miss', { icon: '💨', title: '¡ESQUIVÓ EL ATAQUE!', text: `${currentDefender.name} evitó el ataque de ${currentAttacker.name}`, type: 'miss' })
     } else if (result.type === 'critical') {
-      const wasDefending = defending[currentDefender.id]
-      const finalDamage = wasDefending ? Math.max(1, Math.round(result.damage * (1 - DEFENSE_DAMAGE_REDUCTION))) : result.damage
-      if (wasDefending) setDefending(previousDefending => ({ ...previousDefending, [currentDefender.id]: false }))
-      addLog(wasDefending ? `🛡️💥 ¡GOLPE CRÍTICO BLOQUEADO! ${currentAttacker.name} causa ${result.damage} de daño a ${currentDefender.name}, pero su defensa lo reduce a ${finalDamage}.` : `💥 ¡GOLPE CRÍTICO! ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`, 'critical', { icon: wasDefending ? '🛡️💥' : '💥', title: wasDefending ? '¡DEFENSA CONTRA CRÍTICO!' : '¡GOLPE CRÍTICO!', text: wasDefending ? `${currentDefender.name}: ${result.damage} → ${finalDamage} de daño` : `${currentDefender.name} recibió ${result.damage} de daño`, type: 'critical' })
-      result.damage = finalDamage
+      addLog(wasDefending ? `🛡️💥 ¡GOLPE CRÍTICO BLOQUEADO! ${currentAttacker.name} causa ${result.unblockedDamage} de daño a ${currentDefender.name}, pero su defensa lo reduce a ${result.damage}.` : `💥 ¡GOLPE CRÍTICO! ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`, 'critical', { icon: wasDefending ? '🛡️💥' : '💥', title: wasDefending ? '¡DEFENSA CONTRA CRÍTICO!' : '¡GOLPE CRÍTICO!', text: wasDefending ? `${currentDefender.name}: ${result.unblockedDamage} → ${result.damage} de daño` : `${currentDefender.name} recibió ${result.damage} de daño`, type: 'critical' })
     } else {
-      const wasDefending = defending[currentDefender.id]
-      const finalDamage = wasDefending ? Math.max(1, Math.round(result.damage * (1 - DEFENSE_DAMAGE_REDUCTION))) : result.damage
-      if (wasDefending) setDefending(previousDefending => ({ ...previousDefending, [currentDefender.id]: false }))
       const emoji = actionType === 'ultimate' ? '⚡' : actionType === 'ability' ? '✨' : '⚔️'
       const notificationTitle = actionType === 'ultimate' ? '¡TÉCNICA DEFINITIVA!' : actionType === 'ability' ? '¡HABILIDAD!' : '¡ATAQUE!'
-      addLog(wasDefending ? `🛡️ ${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño, pero ${currentDefender.name} lo reduce a ${finalDamage}.` : `${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`, actionType, { icon: wasDefending ? `🛡️${emoji}` : emoji, title: wasDefending ? '¡DEFENSA!' : notificationTitle, text: wasDefending ? `${currentDefender.name}: ${result.damage} → ${finalDamage} de daño` : `${currentAttacker.name} causó ${result.damage} de daño a ${currentDefender.name}`, type: wasDefending ? 'defend-hit' : actionType })
-      result.damage = finalDamage
+      addLog(wasDefending ? `🛡️ ${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.unblockedDamage} de daño, pero ${currentDefender.name} lo reduce a ${result.damage}.` : `${emoji} ${currentAttacker.name} usa ${actionName} y causa ${result.damage} de daño a ${currentDefender.name}.`, actionType, { icon: wasDefending ? `🛡️${emoji}` : emoji, title: wasDefending ? '¡DEFENSA!' : notificationTitle, text: wasDefending ? `${currentDefender.name}: ${result.unblockedDamage} → ${result.damage} de daño` : `${currentAttacker.name} causó ${result.damage} de daño a ${currentDefender.name}`, type: wasDefending ? 'defend-hit' : actionType })
     }
 
     if (action.startsWith('ability-') || action === 'ultimate') {
       const effect = action === 'ultimate' ? ultimateBattleEffect : abilityBattleEffect
-      const actionEnergy = action === 'ultimate'
-        ? 0
-        : Math.max(0, currentEnergy - energyCost + (result.type === 'miss' ? 8 : result.critical ? 18 : 13))
       const abilityEngineResult = executeAbilityAction(
-        stateResult.state,
+        result.state,
         currentAttacker.id,
         currentDefender.id,
         {
           damage: result.damage,
           critical: result.critical,
-          energy: actionEnergy,
+          energy: result.energy,
           hit: result.type !== 'miss',
           battleEffect: effect,
         },
@@ -539,6 +506,7 @@ function BattlePage() {
         [currentDefender.id]: newDefenderHp,
       }))
       setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: newEnergy }))
+      setDefending(previousDefending => ({ ...previousDefending, [currentDefender.id]: Boolean(engineDefender?.defending) }))
       setBattleStates(previous => ({
         ...previous,
         [currentAttacker.id]: engineAttacker?.states || [],
@@ -556,7 +524,7 @@ function BattlePage() {
     } else {
       setBattleStates(previous => {
         const nextStates = Object.fromEntries(
-          Object.entries(endBattleTurn(stateResult.state).players).map(([id, player]) => [id, player.states]),
+          Object.entries(endBattleTurn(result.state).players).map(([id, player]) => [id, player.states]),
         )
         return { ...previous, ...nextStates }
       })
@@ -570,7 +538,7 @@ function BattlePage() {
       }
     } else if (action === 'basic' && result.type !== 'miss') {
       const engineResult = executeBasicAttack(
-        stateResult.state,
+        result.state,
         currentAttacker.id,
         currentDefender.id,
         { resolvedAmount: result.damage, critical: result.critical },
@@ -582,6 +550,7 @@ function BattlePage() {
       if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
       setHp(previousHp => ({ ...previousHp, [currentDefender.id]: newHp }))
       setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: newEnergy }))
+      setDefending(previousDefending => ({ ...previousDefending, [currentDefender.id]: Boolean(engineDefender?.defending) }))
       setHpFlash(previous => ({ ...previous, [currentDefender.id]: true }))
       setTimeout(() => setHpFlash(previous => ({ ...previous, [currentDefender.id]: false })), 500)
       if (newHp <= 0) {
