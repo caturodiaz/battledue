@@ -101,27 +101,35 @@ export function executeCombatAction(legacyState, sourceId, targetId, action = {}
       attackConfig,
     )
 
-    const abilityResult = executeAbilityAction(
-      attackResult.state,
-      sourceId,
-      targetId,
-      {
-        ...options,
-        ...abilityOptions,
-        ability,
-        combatResult: {
-          hit: attackResult.hit,
-          critical: attackResult.critical,
-          damage: attackResult.damage,
-          ultimate: attackConfig.ultimate,
-        },
+    const abilityOptionsForExecution = {
+      ...options,
+      ...abilityOptions,
+      combatResult: {
         hit: attackResult.hit,
         critical: attackResult.critical,
         damage: attackResult.damage,
-        energy: attackResult.energy,
-        battleEffect: abilityOptions.battleEffect,
+        ultimate: attackConfig.ultimate,
       },
-    )
+      hit: attackResult.hit,
+      critical: attackResult.critical,
+      damage: attackResult.damage,
+      energy: attackResult.energy,
+      battleEffect: abilityOptions.battleEffect ?? ability?.battleEffect,
+    }
+
+    const abilityResult = isDeclarativeAbility(ability)
+      ? executeAbilityAction(
+          attackResult.state,
+          sourceId,
+          targetId,
+          { ...abilityOptionsForExecution, ability },
+        )
+      : executeAbilityAction(
+          attackResult.state,
+          sourceId,
+          targetId,
+          abilityOptionsForExecution,
+        )
 
     return {
       ...abilityResult,
