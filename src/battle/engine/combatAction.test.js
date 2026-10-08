@@ -130,7 +130,10 @@ test('executes defend through the same combat action entry point', () => {
 
 
 test('executes a declarative ultimate with damage and bleeding', () => {
-  const result = executeCombatAction(createState(), 'attacker', 'defender', {
+  const state = createState()
+  state.players.attacker.energy = 100
+
+  const result = executeCombatAction(state, 'attacker', 'defender', {
     type: 'ultimate',
     ability: {
       id: 'ultimate',
