@@ -243,29 +243,6 @@ export function getBattleState(
 
 /*
  * =========================================
- * REDUCIR DURACIONES
- * =========================================
- *
- * Se ejecuta al terminar el turno.
- */
-
-export function decrementBattleStates(
-  states = []
-) {
-  return states
-    .map((state) => ({
-      ...state,
-      turns:
-        state.turns - 1,
-    }))
-    .filter(
-      (state) =>
-        state.turns > 0
-    )
-}
-
-/*
- * =========================================
  * INFORMACIÓN PARA LA UI
  * =========================================
  */
