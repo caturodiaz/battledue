@@ -101,4 +101,3 @@ export function createAbilityAction(ability = {}, options = {}) {
       effects.some((effect) => effect?.type === 'damage_resolve'),
   }
 }
-EOF
