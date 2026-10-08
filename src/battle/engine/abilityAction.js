@@ -27,14 +27,18 @@ export function executeAbilityAction(legacyState, sourceId, targetId, options = 
     value: Math.max(0, Math.min(100, Number(energy) || 0)),
   })
 
-  if (hit && battleEffect && battleEffect.type && battleEffect.type !== 'heal_self' && battleEffect.type !== 'full_heal_self') {
-    effects.push({
-      type: 'battle_state_add',
-      target: battleEffect.target || 'enemy',
-      state: battleEffect.type,
-      turns: battleEffect.data?.turns ?? battleEffect.turns,
-      stacks: battleEffect.data?.stacks ?? battleEffect.stacks,
-    })
+  if (hit) {
+    effects.push({ type: 'battle_state_decrement_all' })
+
+    if (battleEffect && battleEffect.type && battleEffect.type !== 'heal_self' && battleEffect.type !== 'full_heal_self') {
+      effects.push({
+        type: 'battle_state_add',
+        target: battleEffect.target || 'enemy',
+        state: battleEffect.type,
+        turns: battleEffect.data?.turns ?? battleEffect.turns,
+        stacks: battleEffect.data?.stacks ?? battleEffect.stacks,
+      })
+    }
   }
 
   const result = executeBattleAction(
