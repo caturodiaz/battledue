@@ -1,4 +1,3 @@
-import { executeBattleAction } from './battleEngine.js'
 import { executeAbilityAction } from './abilityAction.js'
 import { executeBasicAttack } from './attackAction.js'
 import { executeBasicAction } from './actions.js'
@@ -10,6 +9,20 @@ function resolveAttack(state, sourceId, targetId, options = {}) {
     energyCost: 0,
     ...options,
   })
+}
+
+function getAbilityCombat(ability = {}) {
+  const effects = [
+    ...(Array.isArray(ability.effects) ? ability.effects : []),
+    ...(Array.isArray(ability.steps) ? ability.steps.flatMap((step) => step?.effects || []) : []),
+  ]
+
+  const damageEffect = effects.find((effect) => effect?.type === 'damage_resolve')
+
+  return {
+    ...(ability.combat || {}),
+    multiplier: ability.combat?.multiplier ?? damageEffect?.multiplier ?? 1,
+  }
 }
 
 /**
@@ -39,18 +52,17 @@ export function executeCombatAction(legacyState, sourceId, targetId, action = {}
       attackOptions,
     )
 
-    const result = attackResult.type === 'miss'
-      ? attackResult
-      : executeBasicAttack(
-          attackResult.state,
-          sourceId,
-          targetId,
-          {
-            ...options,
-            resolvedAmount: attackResult.damage,
-            critical: attackResult.critical,
-          },
-        )
+    const result = executeBasicAttack(
+      attackResult.state,
+      sourceId,
+      targetId,
+      {
+        ...options,
+        resolvedAmount: attackResult.damage,
+        critical: attackResult.critical,
+        hit: attackResult.hit,
+      },
+    )
 
     return {
       ...result,
@@ -59,13 +71,15 @@ export function executeCombatAction(legacyState, sourceId, targetId, action = {}
   }
 
   if (type === 'ability' || type === 'ultimate') {
+    const abilityCombat = getAbilityCombat(ability)
     const attackConfig = {
+      ...abilityCombat,
       ...attackOptions,
-      multiplier: attackOptions.multiplier ?? abilityOptions.multiplier ?? 1,
-      energyCost: attackOptions.energyCost ?? abilityOptions.energyCost ?? 0,
-      guaranteedHit: attackOptions.guaranteedHit ?? abilityOptions.guaranteedHit,
-      criticalBonus: attackOptions.criticalBonus ?? abilityOptions.criticalBonus ?? 0,
-      ultimate: type === 'ultimate' || Boolean(attackOptions.ultimate),
+      multiplier: attackOptions.multiplier ?? abilityOptions.multiplier ?? abilityCombat.multiplier ?? 1,
+      energyCost: attackOptions.energyCost ?? abilityOptions.energyCost ?? ability?.costs?.energy ?? 0,
+      guaranteedHit: attackOptions.guaranteedHit ?? abilityOptions.guaranteedHit ?? abilityCombat.guaranteedHit,
+      criticalBonus: attackOptions.criticalBonus ?? abilityOptions.criticalBonus ?? abilityCombat.criticalBonus ?? 0,
+      ultimate: type === 'ultimate' || Boolean(attackOptions.ultimate) || Boolean(abilityCombat.ultimate),
     }
 
     const attackResult = resolveAttack(
