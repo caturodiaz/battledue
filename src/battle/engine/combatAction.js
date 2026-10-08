@@ -11,6 +11,12 @@ function resolveAttack(state, sourceId, targetId, options = {}) {
   })
 }
 
+function isDeclarativeAbility(ability = {}) {
+  return Array.isArray(ability.effects)
+    || Array.isArray(ability.steps)
+    || Array.isArray(ability.triggers)
+}
+
 function getAbilityCombat(ability = {}) {
   const effects = [
     ...(Array.isArray(ability.effects) ? ability.effects : []),
@@ -21,7 +27,13 @@ function getAbilityCombat(ability = {}) {
 
   return {
     ...(ability.combat || {}),
-    multiplier: ability.combat?.multiplier ?? damageEffect?.multiplier ?? 1,
+    multiplier: ability.combat?.multiplier
+      ?? damageEffect?.multiplier
+      ?? ability.multiplier
+      ?? 1,
+    guaranteedHit: ability.combat?.guaranteedHit ?? ability.guaranteedHit,
+    criticalBonus: ability.combat?.criticalBonus ?? ability.criticalBonus ?? 0,
+    ultimate: ability.combat?.ultimate ?? ability.ultimate,
   }
 }
 
