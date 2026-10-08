@@ -3,7 +3,7 @@ import { useCharacters } from '../hooks/useCharacters'
 import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
 import BattleResultScreen from '../components/BattleResultScreen'
-import { getBattleStateInfo } from '../battle/ai/battleStates'
+import { getBattleStateInfo } from '../battle/battleStateInfo'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
 import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, resolveAttackState, startBattleTurn } from '../battle/engine'
 import {
