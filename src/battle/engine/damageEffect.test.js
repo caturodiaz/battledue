@@ -39,3 +39,26 @@ test('defeating a target queues target_defeated', () => {
   assert.equal(result.state.players.defender.hp, 0)
   assert.equal(result.state.combat_events.at(-1).type, 'target_defeated')
 })
+
+test('uses a pre-resolved amount without recalculating damage', () => {
+  const state = {
+    players: {
+      attacker: { hp: 100, energy: 20, stats: { strength: 99, range: 99, control: 99 } },
+      defender: { hp: 100, max_hp: 100, stats: { defense: 0 }, defending: false },
+    },
+    combat_events: [],
+    event_history: [],
+  }
+
+  const result = resolveDamageEffect(
+    state,
+    'attacker',
+    'defender',
+    { multiplier: 1 },
+    { resolvedAmount: 17, randomFactor: 999, critical: true },
+  )
+
+  assert.equal(result.amount, 17)
+  assert.equal(result.state.players.defender.hp, 83)
+  assert.equal(result.energyGain, 18)
+})
