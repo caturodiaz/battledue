@@ -66,18 +66,20 @@ test('executes a declarative ability without exposing combat resolution to the c
   assert.equal(result.state.players.attacker.energy, 43)
 })
 
-test('executes a legacy ability through the unified combat action', () => {
+test('executes a declarative status ability through the unified combat action', () => {
   const result = executeCombatAction(createState(), 'attacker', 'defender', {
     type: 'ability',
     ability: {
+      id: 'bleeding-strike',
       name: 'Bleeding Strike',
-      battleEffect: { type: 'bleeding', target: 'enemy', turns: 3, stacks: 1 },
+      costs: { energy: 25 },
+      effects: [
+        { type: 'damage_resolve', multiplier: 1.45 },
+        { type: 'state_add', state: 'bleeding', target: 'enemy', duration: 3, stacks: 1 },
+      ],
     },
     attackOptions: {
-      multiplier: 1.45,
-      energyCost: 25,
       guaranteedHit: true,
-      criticalBonus: 5,
       randomFactor: 1,
       random: () => 0.99,
     },
