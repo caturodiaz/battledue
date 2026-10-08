@@ -37,7 +37,6 @@ export function executeAbilityAction(legacyState, sourceId, targetId, options = 
         turns: battleEffect.data?.turns ?? battleEffect.turns,
         stacks: battleEffect.data?.stacks ?? battleEffect.stacks,
       })
-    }
   }
 
   const result = executeBattleAction(
