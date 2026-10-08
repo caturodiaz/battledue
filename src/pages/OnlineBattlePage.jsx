@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { getBattleStateInfo } from '../battle/ai/battleStates'
+import { getBattleStateInfo } from '../battle/battleStateInfo'
 import { getTokataDisplayCharacter, isTokata } from '../battle/tokataTransformation'
 import BattleResultScreen from '../components/BattleResultScreen'
 import '../styles/OnlineBattle.css'
