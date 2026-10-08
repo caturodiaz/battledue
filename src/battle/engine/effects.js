@@ -111,6 +111,24 @@ export function applyEffect(state, sourceId, targetId, effect) {
       break
     }
 
+    case 'battle_state_decrement_all': {
+      const players = Object.fromEntries(
+        Object.entries(state?.players || {}).map(([id, player]) => {
+          const states = Array.isArray(player?.states)
+            ? player.states
+                .map((battleState) => ({
+                  ...battleState,
+                  turns: Number(battleState.turns) - 1,
+                }))
+                .filter((battleState) => battleState.turns > 0)
+            : []
+
+          return [id, { ...player, states }]
+        }),
+      )
+      return { ...state, players }
+    }
+
     case 'battle_state_add': {
       if (!effect.state) return state
       const targetStates = Array.isArray(unit.states) ? unit.states : []
