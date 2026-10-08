@@ -6,13 +6,12 @@ import BattleResultScreen from '../components/BattleResultScreen'
 import {
   applyBattleState,
   consumeEvasion,
-  decrementBattleStates,
   getBattleStateInfo,
   processBattleAttack,
   processBattleStateStartOfTurn,
 } from '../battle/ai/battleStates'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
-import { executeBasicAction, executeBasicAttack } from '../battle/engine'
+import { endBattleTurn, executeBasicAction, executeBasicAttack } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -349,8 +348,14 @@ function BattlePage() {
       setTimeout(() => setEnergyPulse(previous => ({ ...previous, [currentAttacker.id]: false })), 600)
       addLog(`🛡️ ${currentAttacker.name} se prepara para defenderse y reducirá el próximo daño recibido en un 50%.`, 'defend', { icon: '🛡️', title: '¡SE DEFENDIÓ!', text: `${currentAttacker.name} reducirá el próximo daño en un 50%`, type: 'defend' })
       setBattleStates(previous => {
-        const nextStates = {}
-        Object.keys(previous).forEach(id => { nextStates[id] = decrementBattleStates(previous[id] || []) })
+        const engineState = {
+        players: Object.fromEntries(
+          Object.entries(previous).map(([id, states]) => [id, { states }]),
+        ),
+      }
+      const nextStates = Object.fromEntries(
+        Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+      )
         return nextStates
       })
       setCurrentAttackerId(currentDefender.id)
@@ -389,8 +394,14 @@ function BattlePage() {
       addLog(`🦎 ${currentAttacker.name} utiliza Metamorfosis y adopta la forma de ${currentDefender.name}. Sus habilidades normales han sido copiadas.`, 'ability', { icon: '🦎', title: '¡METAMORFOSIS!', text: `${currentAttacker.name} ahora tiene la forma de ${currentDefender.name}`, type: 'ability' })
       setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
       setBattleStates(previous => {
-        const nextStates = {}
-        Object.keys(previous).forEach(id => { nextStates[id] = decrementBattleStates(previous[id] || []) })
+        const engineState = {
+        players: Object.fromEntries(
+          Object.entries(previous).map(([id, states]) => [id, { states }]),
+        ),
+      }
+      const nextStates = Object.fromEntries(
+        Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+      )
         return nextStates
       })
       setCurrentAttackerId(currentDefender.id)
@@ -410,8 +421,14 @@ function BattlePage() {
         addLog(`🦎 ${currentAttacker.name} utiliza Metamorfosis y adopta la forma de ${currentDefender.name}. Sus habilidades normales han sido copiadas.`, 'ability', { icon: '🦎', title: '¡METAMORFOSIS!', text: `${currentAttacker.name} ahora tiene la forma de ${currentDefender.name}`, type: 'ability' })
         setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
         setBattleStates(previous => {
-          const nextStates = {}
-          Object.keys(previous).forEach(id => { nextStates[id] = decrementBattleStates(previous[id] || []) })
+          const engineState = {
+        players: Object.fromEntries(
+          Object.entries(previous).map(([id, states]) => [id, { states }]),
+        ),
+      }
+      const nextStates = Object.fromEntries(
+        Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+      )
           return nextStates
         })
         setCurrentAttackerId(currentDefender.id)
@@ -471,8 +488,14 @@ function BattlePage() {
     }
 
     setBattleStates(previous => {
-      const nextStates = {}
-      Object.keys(previous).forEach(id => { nextStates[id] = decrementBattleStates(previous[id] || []) })
+      const engineState = {
+        players: Object.fromEntries(
+          Object.entries(previous).map(([id, states]) => [id, { states }]),
+        ),
+      }
+      const nextStates = Object.fromEntries(
+        Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+      )
       if (abilityBattleEffect && result.type !== 'miss') {
         const effect = abilityBattleEffect
         if (effect.type === 'heal_self') {
