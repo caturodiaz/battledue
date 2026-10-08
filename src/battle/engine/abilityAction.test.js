@@ -101,3 +101,23 @@ test('missed healing ability does not heal the source', () => {
 
   assert.equal(result.state.players.attacker.hp, 60)
 })
+
+
+test('ability action applies stunned to the enemy', () => {
+  const state = {
+    players: {
+      attacker: { hp: 100, max_hp: 100, energy: 25, states: [] },
+      defender: { hp: 100, max_hp: 100, states: [] },
+    },
+  }
+
+  const result = executeAbilityAction(state, 'attacker', 'defender', {
+    damage: 15,
+    energy: 38,
+    battleEffect: { type: 'stunned', target: 'enemy', turns: 1 },
+  })
+
+  assert.deepEqual(result.state.players.defender.states, [
+    { type: 'stunned', turns: 1, stacks: 1 },
+  ])
+})
