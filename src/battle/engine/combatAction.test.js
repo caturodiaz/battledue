@@ -81,7 +81,7 @@ test('executes ability effects after a miss without applying hit-dependent effec
       ],
     },
     attackOptions: {
-      random: () => 0,
+      random: () => 0.99,
     },
   })
 
