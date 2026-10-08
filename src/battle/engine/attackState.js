@@ -1,4 +1,4 @@
-import { BATTLE_STATES } from '../ai/battleStates.js'
+import { BATTLE_STATES } from './battleStateConfig.js'
 
 function hasState(states = [], type) {
   return states.some((state) => state?.type === type)
