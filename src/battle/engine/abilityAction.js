@@ -8,6 +8,8 @@ export function executeAbilityAction(legacyState, sourceId, targetId, options = 
     energy = 0,
     battleEffect = null,
     hit = true,
+    healAmount = 0,
+    fullHeal = false,
     ...actionOptions
   } = options
 
@@ -28,6 +30,14 @@ export function executeAbilityAction(legacyState, sourceId, targetId, options = 
   })
 
   effects.push({ type: 'battle_state_decrement_all' })
+
+  if (hit && (Number(healAmount) > 0 || fullHeal)) {
+    effects.push({
+      type: 'heal',
+      target: 'source',
+      value: fullHeal ? Number.MAX_SAFE_INTEGER : Number(healAmount),
+    })
+  }
 
   if (hit && battleEffect && battleEffect.type && battleEffect.type !== 'heal_self' && battleEffect.type !== 'full_heal_self') {
       effects.push({
