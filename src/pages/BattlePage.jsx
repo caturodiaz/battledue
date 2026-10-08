@@ -12,7 +12,7 @@ import {
   processBattleStateStartOfTurn,
 } from '../battle/ai/battleStates'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
-import { executeBasicAttack } from '../battle/engine'
+import { executeBasicAction, executeBasicAttack } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -316,11 +316,35 @@ function BattlePage() {
 
     if (action === 'defend') {
       setIsProcessingTurn(true)
-      setDefending(previousDefending => ({ ...previousDefending, [currentAttacker.id]: true }))
-      const previousEnergy = currentEnergy
-      const newDefendEnergy = Math.min(MAX_ENERGY, previousEnergy + 10)
-      if (previousEnergy < MAX_ENERGY && newDefendEnergy >= MAX_ENERGY) playEnergyReadySound()
-      setEnergy(previousEnergyState => ({ ...previousEnergyState, [currentAttacker.id]: newDefendEnergy }))
+      const engineState = {
+        players: {
+          [currentAttacker.id]: {
+            hp: hp[currentAttacker.id] || 0,
+            energy: currentEnergy,
+            stats: getStats(currentAttacker),
+            defending: defending[currentAttacker.id] || false,
+          },
+          [currentDefender.id]: {
+            hp: hp[currentDefender.id] || 0,
+            max_hp: getMaxHp(currentDefender),
+            stats: getStats(currentDefender),
+            defending: defending[currentDefender.id] || false,
+          },
+        },
+        combat_events: [],
+        event_history: [],
+      }
+      const engineResult = executeBasicAction(
+        engineState,
+        currentAttacker.id,
+        currentDefender.id,
+        'defend',
+      )
+      const engineAttacker = engineResult.state.players[currentAttacker.id]
+      const newEnergy = Math.min(MAX_ENERGY, Number(engineAttacker?.energy) || 0)
+      if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
+      setDefending(previousDefending => ({ ...previousDefending, [currentAttacker.id]: Boolean(engineAttacker?.defending) }))
+      setEnergy(previousEnergyState => ({ ...previousEnergyState, [currentAttacker.id]: newEnergy }))
       setEnergyPulse(previous => ({ ...previous, [currentAttacker.id]: true }))
       setTimeout(() => setEnergyPulse(previous => ({ ...previous, [currentAttacker.id]: false })), 600)
       addLog(`🛡️ ${currentAttacker.name} se prepara para defenderse y reducirá el próximo daño recibido en un 50%.`, 'defend', { icon: '🛡️', title: '¡SE DEFENDIÓ!', text: `${currentAttacker.name} reducirá el próximo daño en un 50%`, type: 'defend' })
