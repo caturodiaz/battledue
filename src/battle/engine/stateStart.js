@@ -1,13 +1,15 @@
 export function processBattleStateStartOfTurn(states = [], maxHp = 0) {
-  const bleeding = states.find((state) => state?.type === 'bleeding')
+  const updatedStates = [...states]
+  const bleeding = updatedStates.find((state) => state?.type === 'bleeding')
   if (!bleeding) {
-    return { hpChange: 0, messages: [] }
+    return { states: updatedStates, hpChange: 0, messages: [] }
   }
 
   const damagePerStack = Math.max(1, Math.floor(maxHp * 0.05))
-  const bleedingDamage = damagePerStack * (Number(bleeding.stacks) || 0)
+  const bleedingDamage = damagePerStack * bleeding.stacks
 
   return {
+    states: updatedStates,
     hpChange: -bleedingDamage,
     messages: [{
       type: 'bleeding',
