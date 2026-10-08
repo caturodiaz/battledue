@@ -623,6 +623,7 @@ function BattlePage() {
     currentAbilities,
     currentEnergy,
     defending,
+    energy,
     finishBattle,
     hp,
     isBattleFinished,
