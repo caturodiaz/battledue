@@ -3,13 +3,9 @@ import { useCharacters } from '../hooks/useCharacters'
 import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
 import BattleResultScreen from '../components/BattleResultScreen'
-import {
-  consumeEvasion,
-  getBattleStateInfo,
-  processBattleAttack,
-} from '../battle/ai/battleStates'
+import { getBattleStateInfo } from '../battle/ai/battleStates'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
-import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, startBattleTurn } from '../battle/engine'
+import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, resolveAttackState, startBattleTurn } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -321,26 +317,8 @@ function BattlePage() {
 
     if (action === 'defend') {
       setIsProcessingTurn(true)
-      const engineState = {
-        players: {
-          [currentAttacker.id]: {
-            hp: hp[currentAttacker.id] || 0,
-            energy: currentEnergy,
-            stats: getStats(currentAttacker),
-            defending: defending[currentAttacker.id] || false,
-          },
-          [currentDefender.id]: {
-            hp: hp[currentDefender.id] || 0,
-            max_hp: getMaxHp(currentDefender),
-            stats: getStats(currentDefender),
-            defending: defending[currentDefender.id] || false,
-          },
-        },
-        combat_events: [],
-        event_history: [],
-      }
       const engineResult = executeBasicAction(
-        engineState,
+        stateResult.state,
         currentAttacker.id,
         currentDefender.id,
         'defend',
@@ -458,14 +436,32 @@ function BattlePage() {
       setUltimateAnimation(null)
     }
 
-    const attackerStates = battleStates[currentAttacker.id] || []
-    const defenderStates = battleStates[currentDefender.id] || []
+    const engineState = {
+      players: {
+        [currentAttacker.id]: {
+          hp: hp[currentAttacker.id] || 0,
+          max_hp: getMaxHp(currentAttacker),
+          energy: currentEnergy,
+          stats: getStats(currentAttacker),
+          defending: defending[currentAttacker.id] || false,
+          states: battleStates[currentAttacker.id] || [],
+        },
+        [currentDefender.id]: {
+          hp: hp[currentDefender.id] || 0,
+          max_hp: getMaxHp(currentDefender),
+          stats: getStats(currentDefender),
+          defending: defending[currentDefender.id] || false,
+          states: battleStates[currentDefender.id] || [],
+        },
+      },
+      combat_events: [],
+      event_history: [],
+    }
     const baseResult = calculateAttack({ attacker: currentAttacker, defender: currentDefender, multiplier, guaranteedHit, criticalBonus })
-    const stateResult = processBattleAttack({ attackerStates, defenderStates, damage: baseResult.damage })
+    const stateResult = resolveAttackState(engineState, currentAttacker.id, currentDefender.id, baseResult.damage)
     const result = { ...baseResult, damage: stateResult.damage, type: stateResult.hit ? baseResult.type : 'miss', stateReason: stateResult.reason, stateMessage: stateResult.message }
     const wasDefending = defending[currentDefender.id] || false
     if (result.type !== 'miss') playAttackSound({ attacker: currentAttacker, defenderIsDefending: wasDefending })
-    if (stateResult.consumeEvasion) setBattleStates(previous => ({ ...previous, [currentDefender.id]: consumeEvasion(previous[currentDefender.id] || []) }))
     setCombatEffect(result.type)
     setTimeout(() => setCombatEffect(null), 550)
     if (action !== 'basic' && !action.startsWith('ability-')) {
@@ -501,27 +497,6 @@ function BattlePage() {
       const healAmount = effect?.type === 'heal_self' && result.type !== 'miss'
         ? Math.round(getMaxHp(currentAttacker) * Number(effect.data?.amount || 0))
         : 0
-      const engineState = {
-        players: {
-          [currentAttacker.id]: {
-            hp: hp[currentAttacker.id] || 0,
-            max_hp: getMaxHp(currentAttacker),
-            energy: currentEnergy,
-            stats: getStats(currentAttacker),
-            defending: defending[currentAttacker.id] || false,
-            states: battleStates[currentAttacker.id] || [],
-          },
-          [currentDefender.id]: {
-            hp: hp[currentDefender.id] || 0,
-            max_hp: getMaxHp(currentDefender),
-            stats: getStats(currentDefender),
-            defending: defending[currentDefender.id] || false,
-            states: battleStates[currentDefender.id] || [],
-          },
-        },
-        combat_events: [],
-        event_history: [],
-      }
       const abilityEngineResult = executeAbilityAction(
         engineState,
         currentAttacker.id,
@@ -564,15 +539,10 @@ function BattlePage() {
       }
     } else {
       setBattleStates(previous => {
-        const engineState = {
-          players: Object.fromEntries(
-            Object.entries(previous).map(([id, states]) => [id, { states }]),
-          ),
-        }
         const nextStates = Object.fromEntries(
-          Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+          Object.entries(endBattleTurn(stateResult.state).players).map(([id, player]) => [id, player.states]),
         )
-        return nextStates
+        return { ...previous, ...nextStates }
       })
     }
 
@@ -602,7 +572,7 @@ function BattlePage() {
         event_history: [],
       }
       const engineResult = executeBasicAttack(
-        engineState,
+        stateResult.state,
         currentAttacker.id,
         currentDefender.id,
         { resolvedAmount: result.damage, critical: result.critical },
