@@ -4,7 +4,6 @@ import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
 import BattleResultScreen from '../components/BattleResultScreen'
 import {
-  applyBattleState,
   consumeEvasion,
   getBattleStateInfo,
   processBattleAttack,
@@ -573,11 +572,6 @@ function BattlePage() {
 
     if (action.startsWith('ability-')) {
       const currentDefenderHp = hp[currentDefender.id] || 0
-      const engineState = {
-        players: {
-          [currentDefender.id]: { hp: currentDefenderHp },
-        },
-      }
       const expectedHp = Math.max(0, currentDefenderHp - result.damage)
       if (expectedHp <= 0) {
         finishBattle(currentAttacker, currentDefender)
