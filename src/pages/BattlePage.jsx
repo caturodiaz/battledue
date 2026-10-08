@@ -160,14 +160,35 @@ function BattlePage() {
     criticalBonus: Number(ability?.combat?.criticalBonus ?? ability?.criticalBonus ?? 5),
     dealsDamage: ability?.dealsDamage !== false && ability?.battleEffect?.type !== 'full_heal_self',
   })), [currentAbilities])
-  const currentUltimateAction = useMemo(() => ({
+  const currentUltimateAbility = useMemo(() => currentAttacker?.profile?.ultimateAbility || {
+    id: 'ultimate',
     name: currentAttacker?.profile?.ultimateName || 'Técnica definitiva',
-    energyCost: 100,
-    multiplier: currentAttacker?.profile?.ultimateBattleEffect?.type === 'full_heal_self' ? 0 : 3,
-    guaranteedHit: true,
-    criticalBonus: 15,
-    dealsDamage: currentAttacker?.profile?.ultimateBattleEffect?.type !== 'full_heal_self',
-  }), [currentAttacker])
+    costs: { energy: 100 },
+    combat: {
+      multiplier: 3,
+      guaranteedHit: true,
+      criticalBonus: 15,
+      ultimate: true,
+    },
+    effects: [{ type: 'damage_resolve', multiplier: 3 }],
+  }, [currentAttacker])
+
+  const currentUltimateAction = useMemo(() => {
+    const effects = Array.isArray(currentUltimateAbility?.effects)
+      ? currentUltimateAbility.effects
+      : Array.isArray(currentUltimateAbility?.steps)
+        ? currentUltimateAbility.steps.flatMap(step => step?.effects || [])
+        : []
+    const damageEffect = effects.find(effect => effect?.type === 'damage_resolve')
+    return {
+      name: currentUltimateAbility?.name || currentAttacker?.profile?.ultimateName || 'Técnica definitiva',
+      energyCost: Number(currentUltimateAbility?.costs?.energy ?? 100),
+      multiplier: Number(currentUltimateAbility?.combat?.multiplier ?? damageEffect?.multiplier ?? 3),
+      guaranteedHit: Boolean(currentUltimateAbility?.combat?.guaranteedHit ?? true),
+      criticalBonus: Number(currentUltimateAbility?.combat?.criticalBonus ?? 15),
+      dealsDamage: effects.some(effect => effect?.type === 'damage_resolve'),
+    }
+  }, [currentAttacker, currentUltimateAbility])
 
   useEffect(() => {
     if (characters.length < 2 || characterAId || characterBId) return
@@ -332,14 +353,7 @@ function BattlePage() {
       actionType = 'ultimate'
       combatAction = {
         type: 'ultimate',
-        ability: {
-          id: 'ultimate',
-          name: currentUltimateAction.name,
-          battleEffect: currentAttacker.profile?.ultimateBattleEffect || null,
-          multiplier: currentUltimateAction.multiplier,
-          guaranteedHit: currentUltimateAction.guaranteedHit,
-          criticalBonus: currentUltimateAction.criticalBonus,
-        },
+        ability: currentUltimateAbility,
         attackOptions: {
           multiplier: currentUltimateAction.multiplier,
           energyCost: currentUltimateAction.energyCost,
@@ -440,7 +454,7 @@ function BattlePage() {
     }
     if (result.healing > 0 && attackResult.type !== 'miss') {
       addLog(`💚 ${currentAttacker.name} recupera ${result.healing} HP con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN!', text: `${currentAttacker.name} recuperó ${result.healing} HP.`, type: 'heal' })
-      if (currentAttacker.profile?.ultimateBattleEffect?.type === 'full_heal_self' || result.healing >= getMaxHp(currentAttacker) - (hp[currentAttacker.id] || 0)) {
+      if (result.healing >= getMaxHp(currentAttacker) - (hp[currentAttacker.id] || 0)) {
         setHealingCharacterId(currentAttacker.id)
         setTimeout(() => setHealingCharacterId(''), 1800)
         playFullHealingSound()
