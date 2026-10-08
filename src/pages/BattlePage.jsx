@@ -8,10 +8,9 @@ import {
   consumeEvasion,
   getBattleStateInfo,
   processBattleAttack,
-  processBattleStateStartOfTurn,
 } from '../battle/ai/battleStates'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
-import { endBattleTurn, executeBasicAction, executeBasicAttack } from '../battle/engine'
+import { endBattleTurn, executeBasicAction, executeBasicAttack, startBattleTurn } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -290,19 +289,27 @@ function BattlePage() {
     const turnStateKey = `${turn}-${currentAttacker.id}`
     if (processedTurnRef.current !== turnStateKey) {
       processedTurnRef.current = turnStateKey
-      const attackerStates = battleStates[currentAttacker.id] || []
-      const startOfTurnResult = processBattleStateStartOfTurn(attackerStates, getMaxHp(currentAttacker))
-      if (startOfTurnResult.hpChange !== 0) {
-        const currentHp = hp[currentAttacker.id] || 0
-        const newHp = Math.max(0, currentHp + startOfTurnResult.hpChange)
-        setHp(previousHp => ({ ...previousHp, [currentAttacker.id]: newHp }))
-        if (startOfTurnResult.hpChange < 0) {
+      const turnStartResult = startBattleTurn({
+        players: Object.fromEntries(
+          Object.entries(hp).map(([id, currentHp]) => [
+            id,
+            {
+              hp: currentHp,
+              max_hp: id === currentAttacker.id ? getMaxHp(currentAttacker) : getMaxHp(currentDefender),
+              states: battleStates[id] || [],
+            },
+          ]),
+        ),
+      }, currentAttacker.id)
+      if (turnStartResult.hpChange !== 0) {
+        setHp(previousHp => ({ ...previousHp, [currentAttacker.id]: turnStartResult.state.players[currentAttacker.id].hp }))
+        if (turnStartResult.hpChange < 0) {
           setHpFlash(previous => ({ ...previous, [currentAttacker.id]: true }))
           setTimeout(() => setHpFlash(previous => ({ ...previous, [currentAttacker.id]: false })), 500)
         }
       }
-      startOfTurnResult.messages.forEach(message => addLog(message.text, 'status', { icon: message.type === 'bleeding' ? '🩸' : '⚠️', title: '¡ESTADO!', text: message.text, type: 'status' }))
-      const currentHpAfterState = Math.max(0, (hp[currentAttacker.id] || 0) + startOfTurnResult.hpChange)
+      turnStartResult.messages.forEach(message => addLog(message.text, 'status', { icon: message.type === 'bleeding' ? '🩸' : '⚠️', title: '¡ESTADO!', text: message.text, type: 'status' }))
+      const currentHpAfterState = turnStartResult.state.players[currentAttacker.id].hp
       if (currentHpAfterState <= 0) {
         finishBattle(
           currentDefender,
