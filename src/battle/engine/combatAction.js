@@ -1,4 +1,5 @@
 import { executeAbilityAction } from './abilityAction.js'
+import { getAbilityBattleEffect } from './abilityEffects.js'
 import { executeBasicAttack } from './attackAction.js'
 import { executeBasicAction } from './actions.js'
 import { resolveCombatAttack } from './attackResolution.js'
@@ -114,7 +115,7 @@ export function executeCombatAction(legacyState, sourceId, targetId, action = {}
       critical: attackResult.critical,
       damage: attackResult.damage,
       energy: attackResult.energy,
-      battleEffect: abilityOptions.battleEffect ?? ability?.battleEffect,
+      battleEffect: abilityOptions.battleEffect ?? getAbilityBattleEffect(ability),
     }
 
     const abilityResult = isDeclarativeAbility(ability)
