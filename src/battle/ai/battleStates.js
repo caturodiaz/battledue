@@ -241,62 +241,6 @@ export function getBattleState(
  * automáticamente al comenzar el turno.
  */
 
-export function processBattleStateStartOfTurn(
-  states = [],
-  maxHp = 0
-) {
-  let updatedStates = [
-    ...states,
-  ]
-
-  let hpChange = 0
-
-  const messages = []
-
-  /*
-   * 🩸 SANGRADO
-   */
-
-  const bleeding =
-    getBattleState(
-      updatedStates,
-      'bleeding'
-    )
-
-  if (bleeding) {
-    /*
-     * 5% de la vida máxima por
-     * acumulación.
-     */
-
-    const damagePerStack =
-      Math.max(
-        1,
-        Math.floor(
-          maxHp * 0.05
-        )
-      )
-
-    const bleedingDamage =
-      damagePerStack *
-      bleeding.stacks
-
-    hpChange -=
-      bleedingDamage
-
-    messages.push({
-      type: 'bleeding',
-      text: `🩸 Sangrado causa ${bleedingDamage} de daño.`,
-    })
-  }
-
-  return {
-    states: updatedStates,
-    hpChange,
-    messages,
-  }
-}
-
 /*
  * =========================================
  * REDUCIR DURACIONES
