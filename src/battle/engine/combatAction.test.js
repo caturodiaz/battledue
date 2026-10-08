@@ -127,3 +127,79 @@ test('executes defend through the same combat action entry point', () => {
   assert.equal(result.state.players.attacker.defending, true)
   assert.equal(result.state.players.attacker.energy, 60)
 })
+
+
+test('executes a declarative ultimate with damage and bleeding', () => {
+  const result = executeCombatAction(createState(), 'attacker', 'defender', {
+    type: 'ultimate',
+    ability: {
+      id: 'ultimate',
+      name: 'Kitsune no Ōka',
+      costs: { energy: 100 },
+      combat: {
+        multiplier: 3,
+        guaranteedHit: true,
+        criticalBonus: 15,
+        ultimate: true,
+      },
+      effects: [
+        { type: 'damage_resolve', multiplier: 3 },
+        { type: 'state_add', state: 'bleeding', target: 'enemy', duration: 3, stacks: 1 },
+      ],
+    },
+    attackOptions: {
+      guaranteedHit: true,
+      randomFactor: 1,
+      random: () => 0.99,
+      energyCost: 100,
+      ultimate: true,
+    },
+  })
+
+  assert.equal(result.attack.type, 'hit')
+  assert.equal(result.attack.damage, 48)
+  assert.equal(result.state.players.defender.hp, 52)
+  assert.deepEqual(result.state.players.defender.states, [
+    { type: 'bleeding', turns: 3, stacks: 1 },
+  ])
+  assert.equal(result.state.players.attacker.energy, 0)
+})
+
+test('executes a declarative full-heal ultimate without damage', () => {
+  const state = createState()
+  state.players.attacker.hp = 35
+  state.players.attacker.energy = 100
+
+  const result = executeCombatAction(state, 'attacker', 'defender', {
+    type: 'ultimate',
+    ability: {
+      id: 'ultimate',
+      name: 'Curación Súper',
+      costs: { energy: 100 },
+      combat: {
+        multiplier: 0,
+        guaranteedHit: true,
+        criticalBonus: 15,
+        ultimate: true,
+      },
+      effects: [
+        { type: 'heal', target: 'self', percent: 1 },
+      ],
+    },
+    attackOptions: {
+      multiplier: 0,
+      guaranteedHit: true,
+      randomFactor: 1,
+      random: () => 0.99,
+      energyCost: 100,
+      ultimate: true,
+      skipDamage: true,
+    },
+  })
+
+  assert.equal(result.attack.type, 'hit')
+  assert.equal(result.attack.damage, 0)
+  assert.equal(result.state.players.attacker.hp, 100)
+  assert.equal(result.healing, 65)
+  assert.equal(result.state.players.attacker.energy, 0)
+})
