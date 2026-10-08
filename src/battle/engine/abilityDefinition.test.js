@@ -3,23 +3,7 @@ import assert from 'node:assert/strict'
 
 import { createAbilityAction } from './abilityDefinition.js'
 
-test('preserves the current legacy ability defaults inside the engine', () => {
-  const action = createAbilityAction({ name: 'Golpe lunar', battleEffect: 'bleeding' }, { index: 2 })
-
-  assert.deepEqual(action, {
-    id: undefined,
-    name: 'Golpe lunar',
-    kind: 'ability',
-    energyCost: 25,
-    multiplier: 1.75,
-    guaranteedHit: false,
-    criticalBonus: 5,
-    battleEffect: { type: 'bleeding', target: 'enemy', data: { turns: 3, stacks: 1 } },
-    dealsDamage: true,
-  })
-})
-
-test('uses declarative cost, damage, and state definitions', () => {
+test('creates an engine action from a declarative ability', () => {
   const action = createAbilityAction({
     id: 'violet-fang',
     name: 'Colmillo Violeta',
@@ -30,28 +14,39 @@ test('uses declarative cost, damage, and state definitions', () => {
     ],
   })
 
-  assert.equal(action.energyCost, 40)
-  assert.equal(action.multiplier, 2.2)
-  assert.equal(action.dealsDamage, true)
-  assert.deepEqual(action.battleEffect, {
-    type: 'bleeding',
-    target: 'enemy',
-    data: { turns: 3, stacks: 2 },
+  assert.equal(action.abilityId, 'violet-fang')
+  assert.deepEqual(action.costs, { energy: 40 })
+  assert.equal(action.steps.length, 2)
+  assert.deepEqual(action.steps[0].effects, [{ type: 'damage_resolve', multiplier: 2.2 }])
+  assert.deepEqual(action.steps[1].effects, [{ type: 'state_add', state: 'bleeding', target: 'enemy', duration: 3, stacks: 2 }])
+  assert.equal(action.steps[1].events[0].type, 'ability_used')
+})
+
+test('normalizes a declarative ability with steps and triggers', () => {
+  const action = createAbilityAction({
+    id: 'reactive',
+    name: 'Reactive',
+    costs: { energy: 10 },
+    steps: [{ events: [{ type: 'custom' }], effects: [{ type: 'resource_add', resource: 'energy', target: 'source', value: 2 }] }],
+    triggers: [{ event: 'ability_used', effects: [{ type: 'resource_add', resource: 'marked', target: 'source', value: 1 }] }],
   })
+
+  assert.equal(action.steps.length, 1)
+  assert.equal(action.steps[0].events[0].type, 'custom')
+  assert.equal(action.steps[0].events[1].type, 'ability_used')
+  assert.equal(action.triggers.length, 1)
 })
 
-test('uses the ultimate defaults without React-owned combat values', () => {
-  const action = createAbilityAction({ name: 'Pulso final' }, { kind: 'ultimate' })
-
-  assert.equal(action.energyCost, 100)
-  assert.equal(action.multiplier, 3)
-  assert.equal(action.guaranteedHit, true)
-  assert.equal(action.criticalBonus, 15)
+test('rejects an invalid ability definition', () => {
+  assert.throws(
+    () => createAbilityAction({ id: 'broken', name: 'Broken', effects: [{ type: 'not-real' }] }),
+    /Invalid ability/,
+  )
 })
 
-test('marks a full-heal legacy ability as non-damaging', () => {
-  const action = createAbilityAction({ battleEffect: 'full_heal_self' }, { kind: 'ultimate' })
-
-  assert.equal(action.dealsDamage, false)
-  assert.equal(action.multiplier, 0)
+test('rejects an ability without an identity', () => {
+  assert.throws(
+    () => createAbilityAction({ effects: [{ type: 'damage_resolve', multiplier: 1 }] }),
+    /Invalid ability/,
+  )
 })
