@@ -4,7 +4,7 @@ import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
 import BattleResultScreen from '../components/BattleResultScreen'
 import { getBattleStateInfo } from '../battle/battleStateInfo'
-import { createAbilityAction, endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, resolveCombatAttack, startBattleTurn } from '../battle/engine'
+import { endBattleTurn, executeCombatAction, startBattleTurn } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -152,11 +152,22 @@ function BattlePage() {
   const characterADisplay = getTokataDisplayCharacter({ character: characterA, transformation: tokataTransformation })
   const currentEnergy = currentAttacker ? energy[currentAttacker.id] || 0 : 0
   const currentAbilities = getTokataAbilities({ character: currentAttacker, transformation: currentAttackerTransformation, metamorphosisAvailable: tokataMetamorphosisCooldown <= 0 })
-  const currentAbilityActions = useMemo(() => currentAbilities.map((ability, index) => createAbilityAction(ability, { index })), [currentAbilities])
-  const currentUltimateAction = createAbilityAction({
-    name: currentAttacker?.profile?.ultimateName,
-    battleEffect: currentAttacker?.profile?.ultimateBattleEffect,
-  }, { kind: 'ultimate' })
+  const currentAbilityActions = useMemo(() => currentAbilities.map((ability, index) => ({
+    name: ability?.name || `Habilidad ${index + 1}`,
+    energyCost: Number(ability?.costs?.energy ?? ability?.energyCost ?? 25),
+    multiplier: Number(ability?.combat?.multiplier ?? ability?.multiplier ?? (1.45 + index * 0.15)),
+    guaranteedHit: Boolean(ability?.combat?.guaranteedHit ?? ability?.guaranteedHit),
+    criticalBonus: Number(ability?.combat?.criticalBonus ?? ability?.criticalBonus ?? 5),
+    dealsDamage: ability?.dealsDamage !== false && ability?.battleEffect?.type !== 'full_heal_self',
+  })), [currentAbilities])
+  const currentUltimateAction = useMemo(() => ({
+    name: currentAttacker?.profile?.ultimateName || 'Técnica definitiva',
+    energyCost: 100,
+    multiplier: currentAttacker?.profile?.ultimateBattleEffect?.type === 'full_heal_self' ? 0 : 3,
+    guaranteedHit: true,
+    criticalBonus: 15,
+    dealsDamage: currentAttacker?.profile?.ultimateBattleEffect?.type !== 'full_heal_self',
+  }), [currentAttacker])
 
   useEffect(() => {
     if (characters.length < 2 || characterAId || characterBId) return
@@ -358,48 +369,182 @@ function BattlePage() {
     }
 
     let actionName = 'Ataque básico'
-    let multiplier = 1
-    let energyCost = 0
-    let guaranteedHit = false
-    let criticalBonus = 0
     let actionType = 'attack'
-    let selectedBattleEffect = null
-    let dealsDamage = true
+    let combatAction = { type: 'basic' }
 
-    if (action === 'ultimate') {
-      const ultimateAction = createAbilityAction({
-        name: currentAttacker.profile?.ultimateName,
-        battleEffect: currentAttacker.profile?.ultimateBattleEffect,
-      }, { kind: 'ultimate' })
-      if (currentEnergy < ultimateAction.energyCost) return
-      actionName = ultimateAction.name
-      selectedBattleEffect = ultimateAction.battleEffect
-      multiplier = ultimateAction.multiplier
-      energyCost = ultimateAction.energyCost
-      guaranteedHit = ultimateAction.guaranteedHit
-      criticalBonus = ultimateAction.criticalBonus
-      dealsDamage = ultimateAction.dealsDamage
+    if (action === 'defend') {
+      actionType = 'defend'
+      actionName = 'Defender'
+      combatAction = { type: 'defend' }
+    } else if (action === 'ultimate') {
+      if (currentEnergy < currentUltimateAction.energyCost) return
+      actionName = currentUltimateAction.name
       actionType = 'ultimate'
-    } else if (action === 'metamorphosis') {
-      if (!canUseMetamorphosis({ character: currentAttacker, opponent: currentDefender }) || tokataMetamorphosisCooldown > 0) return
-      setIsProcessingTurn(true)
-      const transformation = createTokataTransformation(currentDefender)
-      setTokataTransformation(transformation)
-      setTokataMetamorphosisCooldown(TOKATA_METAMORPHOSIS_COOLDOWN)
-      addLog(`🦎 ${currentAttacker.name} utiliza Metamorfosis y adopta la forma de ${currentDefender.name}. Sus habilidades normales han sido copiadas.`, 'ability', { icon: '🦎', title: '¡METAMORFOSIS!', text: `${currentAttacker.name} ahora tiene la forma de ${currentDefender.name}`, type: 'ability' })
-      setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
-      setBattleStates(previous => {
-        const engineState = {
-        players: Object.fromEntries(
-          Object.entries(previous).map(([id, states]) => [id, { states }]),
-        ),
+      combatAction = {
+        type: 'ultimate',
+        ability: {
+          id: 'ultimate',
+          name: currentUltimateAction.name,
+          battleEffect: currentAttacker.profile?.ultimateBattleEffect || null,
+          multiplier: currentUltimateAction.multiplier,
+          guaranteedHit: currentUltimateAction.guaranteedHit,
+          criticalBonus: currentUltimateAction.criticalBonus,
+        },
+        attackOptions: {
+          multiplier: currentUltimateAction.multiplier,
+          energyCost: currentUltimateAction.energyCost,
+          guaranteedHit: currentUltimateAction.guaranteedHit,
+          criticalBonus: currentUltimateAction.criticalBonus,
+          ultimate: true,
+          skipDamage: !currentUltimateAction.dealsDamage,
+        },
       }
-      const nextStates = Object.fromEntries(
-        Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+    } else if (action.startsWith('ability-')) {
+      const abilityIndex = Number(action.replace('ability-', ''))
+      const ability = currentAbilities[abilityIndex]
+      const abilityAction = currentAbilityActions[abilityIndex]
+      if (!ability || !abilityAction) return
+      if (isMetamorphosisAbility(ability)) {
+        if (!canUseMetamorphosis({ character: currentAttacker, opponent: currentDefender }) || tokataMetamorphosisCooldown > 0) return
+        setIsProcessingTurn(true)
+        const transformation = createTokataTransformation(currentDefender)
+        setTokataTransformation(transformation)
+        setTokataMetamorphosisCooldown(TOKATA_METAMORPHOSIS_COOLDOWN)
+        addLog(`🦎 ${currentAttacker.name} utiliza Metamorfosis y adopta la forma de ${currentDefender.name}. Sus habilidades normales han sido copiadas.`, 'ability', { icon: '🦎', title: '¡METAMORFOSIS!', text: `${currentAttacker.name} ahora tiene la forma de ${currentDefender.name}`, type: 'ability' })
+        setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
+        setBattleStates(previous => {
+          const engineState = {
+            players: Object.fromEntries(Object.entries(previous).map(([id, states]) => [id, { states }])),
+          }
+          return Object.fromEntries(Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]))
+        })
+        setCurrentAttackerId(currentDefender.id)
+        setTurn(previousTurn => previousTurn + 1)
+        setTimeout(() => setIsProcessingTurn(false), 500)
+        return
+      }
+      if (currentEnergy < abilityAction.energyCost) return
+      actionName = abilityAction.name
+      actionType = 'ability'
+      combatAction = {
+        type: 'ability',
+        ability,
+        attackOptions: {
+          multiplier: abilityAction.multiplier,
+          energyCost: abilityAction.energyCost,
+          guaranteedHit: abilityAction.guaranteedHit,
+          criticalBonus: abilityAction.criticalBonus,
+          skipDamage: !abilityAction.dealsDamage,
+        },
+      }
+    }
+
+    setIsProcessingTurn(true)
+    if (action === 'ultimate') {
+      setUltimateAnimation({ id: crypto.randomUUID(), name: currentAttacker.name, ultimateName: actionName, image: currentAttacker.profile?.ultimateImage || '' })
+      await new Promise(resolve => setTimeout(resolve, 1400))
+      setUltimateAnimation(null)
+    }
+
+    const engineState = {
+      players: {
+        [currentAttacker.id]: {
+          hp: hp[currentAttacker.id] || 0,
+          max_hp: getMaxHp(currentAttacker),
+          energy: currentEnergy,
+          stats: getStats(currentAttacker),
+          defending: defending[currentAttacker.id] || false,
+          states: battleStates[currentAttacker.id] || [],
+        },
+        [currentDefender.id]: {
+          hp: hp[currentDefender.id] || 0,
+          max_hp: getMaxHp(currentDefender),
+          energy: energy[currentDefender.id] || 0,
+          stats: getStats(currentDefender),
+          defending: defending[currentDefender.id] || false,
+          states: battleStates[currentDefender.id] || [],
+        },
+      },
+      combat_events: [],
+      event_history: [],
+    }
+
+    const result = executeCombatAction(engineState, currentAttacker.id, currentDefender.id, combatAction)
+    const attackResult = result.attack || { type: actionType === 'defend' ? 'defend' : 'hit', damage: 0, critical: false, hit: true }
+    const engineAttacker = result.state.players[currentAttacker.id]
+    const engineDefender = result.state.players[currentDefender.id]
+    const newAttackerHp = Math.max(0, Number(engineAttacker?.hp) || 0)
+    const newDefenderHp = Math.max(0, Number(engineDefender?.hp) || 0)
+    const newEnergy = Math.min(MAX_ENERGY, Number(engineAttacker?.energy) || 0)
+    const wasDefending = Boolean(attackResult.defending)
+
+    if (actionType !== 'defend' && attackResult.type !== 'miss') playAttackSound({ attacker: currentAttacker, defenderIsDefending: wasDefending })
+    if (actionType !== 'defend') {
+      setCombatEffect(attackResult.type)
+      setTimeout(() => setCombatEffect(null), 550)
+    }
+
+    if (attackResult.type === 'miss') {
+      playDodgeSound()
+      addLog(attackResult.message || `💨 ${currentDefender.name} esquiva ${actionName} de ${currentAttacker.name}.`, 'miss', { icon: '💨', title: '¡ESQUIVÓ EL ATAQUE!', text: `${currentDefender.name} evitó el ataque de ${currentAttacker.name}`, type: 'miss' })
+    } else if (attackResult.type === 'critical') {
+      addLog(
+        wasDefending ? `🛡️💥 ¡GOLPE CRÍTICO BLOQUEADO! ${currentAttacker.name} causa ${attackResult.unblockedDamage} de daño a ${currentDefender.name}, pero su defensa lo reduce a ${attackResult.damage}.` : `💥 ¡GOLPE CRÍTICO! ${currentAttacker.name} usa ${actionName} y causa ${attackResult.damage} de daño a ${currentDefender.name}.`,
+        'critical',
+        { icon: wasDefending ? '🛡️💥' : '💥', title: wasDefending ? '¡DEFENSA CONTRA CRÍTICO!' : '¡GOLPE CRÍTICO!', text: wasDefending ? `${currentDefender.name}: ${attackResult.unblockedDamage} → ${attackResult.damage} de daño` : `${currentDefender.name} recibió ${attackResult.damage} de daño`, type: 'critical' },
       )
-        return nextStates
+    } else if (actionType === 'defend') {
+      addLog(`🛡️ ${currentAttacker.name} se prepara para defenderse y reducirá el próximo daño recibido en un 50%.`, 'defend', { icon: '🛡️', title: '¡SE DEFENDIÓ!', text: `${currentAttacker.name} reducirá el próximo daño en un 50%`, type: 'defend' })
+    } else {
+      const emoji = actionType === 'ultimate' ? '⚡' : actionType === 'ability' ? '✨' : '⚔️'
+      const notificationTitle = actionType === 'ultimate' ? '¡TÉCNICA DEFINITIVA!' : actionType === 'ability' ? '¡HABILIDAD!' : '¡ATAQUE!'
+      addLog(
+        wasDefending ? `🛡️ ${emoji} ${currentAttacker.name} usa ${actionName} y causa ${attackResult.unblockedDamage} de daño, pero ${currentDefender.name} lo reduce a ${attackResult.damage}.` : `${emoji} ${currentAttacker.name} usa ${actionName} y causa ${attackResult.damage} de daño a ${currentDefender.name}.`,
+        actionType,
+        { icon: wasDefending ? `🛡️${emoji}` : emoji, title: wasDefending ? '¡DEFENSA!' : notificationTitle, text: wasDefending ? `${currentDefender.name}: ${attackResult.unblockedDamage} → ${attackResult.damage} de daño` : `${currentAttacker.name} causó ${attackResult.damage} de daño a ${currentDefender.name}`, type: wasDefending ? 'defend-hit' : actionType },
+      )
+    }
+
+    if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
+    setHp(previousHp => ({ ...previousHp, [currentAttacker.id]: newAttackerHp, [currentDefender.id]: newDefenderHp }))
+    setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: newEnergy, [currentDefender.id]: Math.min(MAX_ENERGY, Number(engineDefender?.energy) || 0) }))
+    setDefending(previousDefending => ({ ...previousDefending, [currentAttacker.id]: Boolean(engineAttacker?.defending), [currentDefender.id]: Boolean(engineDefender?.defending) }))
+    setBattleStates(previous => ({ ...previous, [currentAttacker.id]: engineAttacker?.states || [], [currentDefender.id]: engineDefender?.states || [] }))
+
+    if (attackResult.damage > 0) {
+      setHpFlash(previous => ({ ...previous, [currentDefender.id]: true }))
+      setTimeout(() => setHpFlash(previous => ({ ...previous, [currentDefender.id]: false })), 500)
+    }
+
+    if (result.healing > 0 && attackResult.type !== 'miss') {
+      addLog(`💚 ${currentAttacker.name} recupera ${result.healing} HP con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN!', text: `${currentAttacker.name} recuperó ${result.healing} HP.`, type: 'heal' })
+      if (currentAttacker.profile?.ultimateBattleEffect?.type === 'full_heal_self' || result.healing >= getMaxHp(currentAttacker) - (hp[currentAttacker.id] || 0)) {
+        setHealingCharacterId(currentAttacker.id)
+        setTimeout(() => setHealingCharacterId(''), 1800)
+        playFullHealingSound()
+      }
+    }
+
+    if (actionType === 'defend' || actionType === 'attack') {
+      setBattleStates(previous => {
+        const stateForTurnEnd = {
+          ...result.state,
+          players: Object.fromEntries(Object.entries(result.state.players).map(([id, player]) => [id, { states: player.states }])),
+        }
+        const nextStates = Object.fromEntries(Object.entries(endBattleTurn(stateForTurnEnd).players).map(([id, player]) => [id, player.states]))
+        return { ...previous, ...nextStates }
       })
-      setCurrentAttackerId(currentDefender.id)
+    }
+
+    if (newDefenderHp <= 0) {
+      finishBattle(currentAttacker, currentDefender)
+      return
+    }
+    if (newAttackerHp <= 0) {
+      finishBattle(currentDefender, currentAttacker)
+      return
+    }
+    setCurrentAttackerId(currentDefender.id)
       setTurn(previousTurn => previousTurn + 1)
       setTimeout(() => setIsProcessingTurn(false), 500)
       return
