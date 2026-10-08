@@ -5,3 +5,4 @@ export { createBattleState, processBattleEvents, executeBattleAction, clearBattl
 export { toEngineState, fromEngineState } from './stateAdapter.js'
 export { BASIC_ACTIONS, executeBasicAction } from './actions.js'
 export { BASIC_ATTACK, executeBasicAttack } from './attackAction.js'
+export { endBattleTurn } from './turn.js'
