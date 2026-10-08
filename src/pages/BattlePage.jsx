@@ -498,7 +498,7 @@ function BattlePage() {
         ? Math.round(getMaxHp(currentAttacker) * Number(effect.data?.amount || 0))
         : 0
       const abilityEngineResult = executeAbilityAction(
-        engineState,
+        stateResult.state,
         currentAttacker.id,
         currentDefender.id,
         {
@@ -553,24 +553,6 @@ function BattlePage() {
         return
       }
     } else if (action === 'basic' && result.type !== 'miss') {
-      const engineState = {
-        players: {
-          [currentAttacker.id]: {
-            hp: hp[currentAttacker.id] || 0,
-            energy: currentEnergy,
-            stats: getStats(currentAttacker),
-            defending: defending[currentAttacker.id] || false,
-          },
-          [currentDefender.id]: {
-            hp: hp[currentDefender.id] || 0,
-            max_hp: getMaxHp(currentDefender),
-            stats: getStats(currentDefender),
-            defending: defending[currentDefender.id] || false,
-          },
-        },
-        combat_events: [],
-        event_history: [],
-      }
       const engineResult = executeBasicAttack(
         stateResult.state,
         currentAttacker.id,
