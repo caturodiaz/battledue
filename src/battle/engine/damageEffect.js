@@ -10,14 +10,17 @@ export function resolveDamageEffect(state, sourceId, targetId, effect = {}, cont
   const critical = Boolean(context.critical)
   const randomFactor = context.randomFactor == null ? 1 : Number(context.randomFactor)
   const multiplier = Number(effect.multiplier ?? effect.value ?? 1)
-  const amount = calculateDamage({
-    attackerStats,
-    defenderStats,
-    multiplier,
-    randomFactor,
-    critical,
-    defending: Boolean(defender.defending || defender.flags?.defending),
-  })
+  const hasResolvedAmount = context.resolvedAmount != null
+  const amount = hasResolvedAmount
+    ? Math.max(0, Number(context.resolvedAmount) || 0)
+    : calculateDamage({
+        attackerStats,
+        defenderStats,
+        multiplier,
+        randomFactor,
+        critical,
+        defending: Boolean(defender.defending || defender.flags?.defending),
+      })
 
   let nextState = state
   nextState = queueBattleEvent(nextState, 'before_damage', {
