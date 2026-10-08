@@ -111,6 +111,34 @@ export function applyEffect(state, sourceId, targetId, effect) {
       break
     }
 
+    case 'battle_state_add': {
+      if (!effect.state) return state
+      const targetStates = Array.isArray(unit.states) ? unit.states : []
+      const turns = Math.max(0, Number(effect.turns) || 0)
+      const stacks = Math.max(1, Number(effect.stacks) || 1)
+      const existingIndex = targetStates.findIndex((battleState) => battleState?.type === effect.state)
+
+      if (existingIndex === -1) {
+        nextUnit = {
+          ...unit,
+          states: [...targetStates, { type: effect.state, turns, stacks }],
+        }
+      } else {
+        const nextStates = targetStates.map((battleState, index) => {
+          if (index !== existingIndex) return battleState
+          return {
+            ...battleState,
+            turns: Math.max(Number(battleState.turns) || 0, turns),
+            stacks: battleState.type === 'bleeding'
+              ? Math.min(3, (Number(battleState.stacks) || 0) + stacks)
+              : Number(battleState.stacks) || stacks,
+          }
+        })
+        nextUnit = { ...unit, states: nextStates }
+      }
+      break
+    }
+
     case 'flag_set': {
       if (!effect.flag) return state
       nextUnit = {
