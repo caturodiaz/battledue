@@ -14,27 +14,32 @@ function createState() {
 
 test('ability action applies resolved damage, energy and bleeding', () => {
   const result = executeAbilityAction(createState(), 'attacker', 'defender', {
-    damage: 20,
-    critical: false,
-    energy: 38,
-    battleEffect: { type: 'bleeding', target: 'enemy', turns: 3, stacks: 1 },
+    ability: {
+      id: 'bleeding-strike',
+      name: 'Bleeding Strike',
+      costs: { energy: 12 },
+      effects: [
+        { type: 'damage_resolve', multiplier: 1 },
+        { type: 'state_add', state: 'bleeding', target: 'enemy', duration: 3, stacks: 1 },
+      ],
+    },
+    combatResult: { damage: 20, critical: false, hit: true },
   })
-
   assert.equal(result.state.players.defender.hp, 80)
   assert.equal(result.state.players.attacker.energy, 38)
-  assert.deepEqual(result.state.players.defender.states, [
-    { type: 'bleeding', turns: 3, stacks: 1 },
-  ])
+  assert.deepEqual(result.state.players.defender.states, [{ type: 'bleeding', turns: 3, stacks: 1 }])
 })
 
 test('missed ability does not apply its battle state', () => {
   const result = executeAbilityAction(createState(), 'attacker', 'defender', {
-    damage: 0,
-    energy: 33,
-    hit: false,
-    battleEffect: { type: 'bleeding', target: 'enemy', turns: 3, stacks: 1 },
+    ability: {
+      id: 'missed-bleeding',
+      name: 'Missed Bleeding',
+      costs: { energy: 17 },
+      effects: [{ type: 'state_add', state: 'bleeding', target: 'enemy', duration: 3, stacks: 1 }],
+    },
+    combatResult: { damage: 0, hit: false },
   })
-
   assert.equal(result.state.players.defender.hp, 100)
   assert.equal(result.state.players.defender.states.length, 0)
   assert.equal(result.state.players.attacker.energy, 33)
@@ -43,13 +48,10 @@ test('missed ability does not apply its battle state', () => {
 test('ability action heals the source without exceeding max hp', () => {
   const state = createState()
   state.players.attacker.hp = 60
-
   const result = executeAbilityAction(state, 'attacker', 'defender', {
-    damage: 20,
-    energy: 38,
-    battleEffect: { type: 'heal_self', target: 'self', amount: 0.12 },
+    ability: { id: 'heal-self', name: 'Heal Self', effects: [{ type: 'heal', target: 'self', percent: 0.12 }] },
+    combatResult: { hit: true },
   })
-
   assert.equal(result.state.players.attacker.hp, 72)
   assert.equal(result.healing, 12)
 })
@@ -57,15 +59,10 @@ test('ability action heals the source without exceeding max hp', () => {
 test('full heal restores the source to max hp', () => {
   const state = createState()
   state.players.attacker.hp = 35
-  state.players.attacker.energy = 100
-
   const result = executeAbilityAction(state, 'attacker', 'defender', {
-    damage: 20,
-    energy: 0,
-    hit: true,
-    battleEffect: { type: 'full_heal_self', target: 'self' },
+    ability: { id: 'full-heal', name: 'Full Heal', effects: [{ type: 'heal', target: 'self', full: true }] },
+    combatResult: { hit: true },
   })
-
   assert.equal(result.state.players.attacker.hp, 100)
   assert.equal(result.healing, 65)
 })
@@ -73,28 +70,20 @@ test('full heal restores the source to max hp', () => {
 test('missed healing ability does not heal the source', () => {
   const state = createState()
   state.players.attacker.hp = 60
-
   const result = executeAbilityAction(state, 'attacker', 'defender', {
-    damage: 0,
-    energy: 33,
-    hit: false,
-    battleEffect: { type: 'heal_self', target: 'self', amount: 0.12 },
+    ability: { id: 'missed-heal', name: 'Missed Heal', effects: [{ type: 'heal', target: 'self', percent: 0.12 }] },
+    combatResult: { damage: 0, hit: false },
   })
-
   assert.equal(result.state.players.attacker.hp, 60)
   assert.equal(result.healing, 0)
 })
 
 test('ability action applies stunned to the enemy', () => {
   const result = executeAbilityAction(createState(), 'attacker', 'defender', {
-    damage: 15,
-    energy: 38,
-    battleEffect: { type: 'stunned', target: 'enemy', turns: 1 },
+    ability: { id: 'stunned-strike', name: 'Stunned Strike', effects: [{ type: 'state_add', state: 'stunned', target: 'enemy', duration: 1, stacks: 1 }] },
+    combatResult: { damage: 15, hit: true },
   })
-
-  assert.deepEqual(result.state.players.defender.states, [
-    { type: 'stunned', turns: 1, stacks: 1 },
-  ])
+  assert.deepEqual(result.state.players.defender.states, [{ type: 'stunned', turns: 1, stacks: 1 }])
 })
 
 test('declarative ability resolves damage using its multiplier', () => {
