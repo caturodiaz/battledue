@@ -32,16 +32,48 @@ function getDamageMultiplier(ability, fallback) {
  * decide its combat parameters.
  */
 export function createAbilityAction(ability = {}, options = {}) {
+  const kind = options.kind || 'ability'
+  const isUltimate = kind === 'ultimate'
+  const index = Math.max(0, Number(options.index) || 0)
+
+  /*
+   * Legacy ability profiles do not necessarily have the declarative schema
+   * fields (id, name, effects, steps, or triggers). Preserve their historical
+   * defaults and behavior instead of forcing them through declarative validation.
+   */
+  const hasDeclarativeShape =
+    Array.isArray(ability.effects) ||
+    Array.isArray(ability.steps) ||
+    Array.isArray(ability.triggers)
+
+  if (!hasDeclarativeShape) {
+    const effects = getEffects(ability)
+    const legacyAbility = effects.length === 0
+    const fallbackMultiplier = isUltimate ? 3 : 1.45 + index * 0.15
+    const battleEffect = getAbilityBattleEffect(ability) || getDeclarativeBattleEffect(ability)
+    const fullHeal = battleEffect?.type === 'full_heal_self'
+
+    return {
+      id: ability.id,
+      name: ability.name || (isUltimate ? 'Técnica definitiva' : 'Habilidad'),
+      kind,
+      energyCost: Math.max(0, Number(ability?.costs?.energy ?? (isUltimate ? 100 : 25)) || 0),
+      multiplier: fullHeal ? 0 : getDamageMultiplier(ability, fallbackMultiplier),
+      guaranteedHit: Boolean(ability?.combat?.guaranteedHit ?? isUltimate),
+      criticalBonus: Number(ability?.combat?.criticalBonus ?? (isUltimate ? 15 : 5)) || 0,
+      battleEffect,
+      dealsDamage:
+        (legacyAbility && !fullHeal) ||
+        effects.some((effect) => effect?.type === 'damage_resolve'),
+    }
+  }
+
   const normalized = normalizeAbility(ability)
   const validation = validateAbility(normalized)
 
   if (!validation.valid) {
     throw new Error(`Invalid ability: ${validation.errors.join('; ')}`)
   }
-
-  const kind = options.kind || 'ability'
-  const isUltimate = kind === 'ultimate'
-  const index = Math.max(0, Number(options.index) || 0)
 
   const effects = getEffects(normalized)
   const legacyAbility = effects.length === 0
@@ -54,7 +86,10 @@ export function createAbilityAction(ability = {}, options = {}) {
         events: Array.isArray(step?.events) ? step.events : [],
         effects: Array.isArray(step?.effects) ? step.effects : [],
       }))
-    : normalized.effects.map((effect) => ({ effects: [effect] }))
+    : normalized.effects.map((effect) => ({
+        events: [],
+        effects: [effect],
+      }))
 
   const abilityUsedEvent = {
     type: 'ability_used',
@@ -62,24 +97,22 @@ export function createAbilityAction(ability = {}, options = {}) {
   }
 
   if (steps.length === 0) {
-    steps.push({ events: [abilityUsedEvent] })
+    steps.push({ events: [abilityUsedEvent], effects: [] })
   } else {
     const lastStep = steps[steps.length - 1]
     steps[steps.length - 1] = {
       ...lastStep,
-      events: [...lastStep.events, abilityUsedEvent],
+      events: [...(lastStep.events || []), abilityUsedEvent],
     }
   }
 
   return {
-    // Declarative engine configuration
     type: 'ability',
     abilityId: normalized.id,
     costs: normalized.costs,
     steps,
     triggers: normalized.triggers,
 
-    // Legacy/action metadata kept for existing callers
     id: normalized.id,
     name: normalized.name || (isUltimate ? 'Técnica definitiva' : 'Habilidad'),
     kind,
@@ -93,9 +126,6 @@ export function createAbilityAction(ability = {}, options = {}) {
       normalized?.combat?.criticalBonus ?? (isUltimate ? 15 : 5),
     ) || 0,
     battleEffect,
-
-    // Existing unstructured profiles were historically offensive. Explicit
-    // definitions opt into damage only by declaring damage_resolve.
     dealsDamage:
       (legacyAbility && !fullHeal) ||
       effects.some((effect) => effect?.type === 'damage_resolve'),

@@ -9,6 +9,7 @@ const VALID_TRIGGER_EVENTS = new Set([
   'turn_start',
   'turn_end',
   'action_received',
+  'ability_used',
 ])
 
 const VALID_EFFECT_TYPES = new Set([
@@ -68,6 +69,7 @@ export function normalizeAbility(ability = {}) {
     effects: Array.isArray(ability.effects) ? ability.effects : [],
     steps: Array.isArray(ability.steps) ? ability.steps : [],
     triggers: Array.isArray(ability.triggers) ? ability.triggers : [],
+    combat: { ...(ability.combat || {}) },
     metadata: { ...(ability.metadata || {}) },
   }
 }
