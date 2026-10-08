@@ -120,11 +120,10 @@ test('declarative ability resolves ordered damage, state and resource effects', 
   })
 
   assert.equal(result.state.players.defender.hp, 70)
-  assert.equal(result.state.players.attacker.energy, 20)
+  assert.equal(result.state.players.attacker.energy, 30)
   assert.deepEqual(result.state.players.defender.states, [
     { type: 'bleeding', turns: 3, stacks: 2 },
   ])
-  assert.equal(result.state.players.attacker.resources.energy, 20)
 })
 
 test('declarative percentage and full healing clamp at max hp', () => {

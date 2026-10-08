@@ -17,6 +17,21 @@ export function createAbilityAction(ability = {}) {
       ? [{ effects: normalized.effects }]
       : []
 
+  const abilityUsedEvent = {
+    type: 'ability_used',
+    payload: { ability: normalized.id },
+  }
+
+  if (steps.length === 0) {
+    steps.push({ events: [abilityUsedEvent] })
+  } else {
+    const lastStep = steps[steps.length - 1]
+    steps[steps.length - 1] = {
+      ...lastStep,
+      events: [...lastStep.events, abilityUsedEvent],
+    }
+  }
+
   return {
     type: 'ability',
     abilityId: normalized.id,

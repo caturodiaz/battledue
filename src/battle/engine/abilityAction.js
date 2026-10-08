@@ -13,49 +13,35 @@ function getResource(unit, resource) {
 }
 
 function applyAbilityCosts(state, sourceId, costs = {}) {
-  let nextState = state
-  const source = nextState?.players?.[sourceId] || {}
+  const source = state?.players?.[sourceId] || {}
+  const currentResources = { ...(source.resources || {}) }
 
   for (const [resource, rawCost] of Object.entries(costs || {})) {
     const cost = Math.max(0, Number(rawCost) || 0)
-    if (getResource(source, resource) < cost) {
+    const currentValue = resource in currentResources
+      ? Number(currentResources[resource]) || 0
+      : getResource(source, resource)
+
+    if (currentValue < cost) {
       throw new Error(`Insufficient ${resource} to execute ability`)
     }
 
-    const resources = {
-      ...(source.resources || {}),
-      [resource]: getResource(source, resource) - cost,
-    }
-
-    nextState = {
-      ...nextState,
-      players: {
-        ...(nextState.players || {}),
-        [sourceId]: {
-          ...source,
-          resources,
-          ...(resource === 'energy'
-            ? { energy: Math.max(0, Math.min(MAX_ENERGY, resources.energy)) }
-            : {}),
-        },
-      },
-    }
+    currentResources[resource] = currentValue - cost
   }
 
-  return nextState
-}
-
-function filterEffectsForHit(effects, hit) {
-  if (hit) return effects
-
-  return effects.filter((effect) => effect?.requiresHit === false)
-}
-
-function filterStepsForHit(steps, hit) {
-  return steps.map((step) => ({
-    ...step,
-    effects: filterEffectsForHit(step?.effects || [], hit),
-  }))
+  return {
+    ...state,
+    players: {
+      ...(state.players || {}),
+      [sourceId]: {
+        ...source,
+        resources: currentResources,
+        ...(Object.prototype.hasOwnProperty.call(costs, 'energy')
+          ? { energy: Math.max(0, Math.min(MAX_ENERGY, currentResources.energy)) }
+          : {}),
+      },
+    },
+  }
 }
 
 function executeDeclarativeAbility(legacyState, sourceId, targetId, ability, options) {
@@ -72,7 +58,7 @@ function executeDeclarativeAbility(legacyState, sourceId, targetId, ability, opt
     {
       sourceId,
       targetId,
-      steps: filterStepsForHit(action.steps, hit),
+      steps: action.steps,
       triggers: action.triggers,
     },
     {
