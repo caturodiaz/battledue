@@ -554,9 +554,6 @@ function BattlePage() {
         [currentDefender.id]: engineDefender?.states || [],
       }))
       if (effect?.type === 'heal_self' && result.type !== 'miss') {
-        setHealingCharacterId(currentAttacker.id)
-        setTimeout(() => setHealingCharacterId(''), 1800)
-        playFullHealingSound()
         addLog(`💚 ${currentAttacker.name} recupera ${healAmount} HP con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN!', text: `${currentAttacker.name} recuperó ${healAmount} HP.`, type: 'heal' })
       }
       if (effect?.type === 'full_heal_self' && result.type !== 'miss') {
