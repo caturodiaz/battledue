@@ -1,4 +1,4 @@
-import { processBattleStateStartOfTurn } from '../ai/battleStates.js'
+import { processBattleStateStartOfTurn } from './stateStart.js'
 
 export function startBattleTurn(state, unitId) {
   const player = state?.players?.[unitId]
