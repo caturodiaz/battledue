@@ -10,7 +10,7 @@ import {
   processBattleAttack,
 } from '../battle/ai/battleStates'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
-import { endBattleTurn, executeBasicAction, executeBasicAttack, startBattleTurn } from '../battle/engine'
+import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, startBattleTurn } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -469,7 +469,7 @@ function BattlePage() {
     if (stateResult.consumeEvasion) setBattleStates(previous => ({ ...previous, [currentDefender.id]: consumeEvasion(previous[currentDefender.id] || []) }))
     setCombatEffect(result.type)
     setTimeout(() => setCombatEffect(null), 550)
-    if (action !== 'basic') {
+    if (action !== 'basic' && !action.startsWith('ability-')) {
       const newEnergy = Math.max(0, currentEnergy - energyCost + (action === 'ultimate' ? 0 : result.type === 'miss' ? 8 : result.critical ? 18 : 13))
       if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
       setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: Math.min(MAX_ENERGY, newEnergy) }))
@@ -494,33 +494,73 @@ function BattlePage() {
       result.damage = finalDamage
     }
 
-    setBattleStates(previous => {
+    if (action.startsWith('ability-')) {
+      const abilityEnergy = Math.max(0, currentEnergy - energyCost + (result.type === 'miss' ? 8 : result.critical ? 18 : 13))
       const engineState = {
-        players: Object.fromEntries(
-          Object.entries(previous).map(([id, states]) => [id, { states }]),
-        ),
+        players: {
+          [currentAttacker.id]: {
+            hp: hp[currentAttacker.id] || 0,
+            energy: currentEnergy,
+            stats: getStats(currentAttacker),
+            defending: defending[currentAttacker.id] || false,
+            states: battleStates[currentAttacker.id] || [],
+          },
+          [currentDefender.id]: {
+            hp: hp[currentDefender.id] || 0,
+            max_hp: getMaxHp(currentDefender),
+            stats: getStats(currentDefender),
+            defending: defending[currentDefender.id] || false,
+            states: battleStates[currentDefender.id] || [],
+          },
+        },
+        combat_events: [],
+        event_history: [],
       }
-      const nextStates = Object.fromEntries(
-        Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+      const abilityEngineResult = executeAbilityAction(
+        engineState,
+        currentAttacker.id,
+        currentDefender.id,
+        {
+          damage: result.damage,
+          critical: result.critical,
+          energy: abilityEnergy,
+          hit: result.type !== 'miss',
+          battleEffect: abilityBattleEffect,
+        },
       )
-      if (abilityBattleEffect && result.type !== 'miss') {
-        const effect = abilityBattleEffect
-        if (effect.type === 'heal_self') {
-          const maxHp = getMaxHp(currentAttacker)
-          const currentHp = hp[currentAttacker.id] || 0
-          const healAmount = Math.round(maxHp * Number(effect.data?.amount || 0))
-          const newHp = Math.min(maxHp, currentHp + healAmount)
-          setHp(previousHp => ({ ...previousHp, [currentAttacker.id]: newHp }))
-          addLog(`💚 ${currentAttacker.name} recupera ${healAmount} HP con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN!', text: `${currentAttacker.name} recuperó ${healAmount} HP.`, type: 'heal' })
-          return nextStates
-        }
-        const targetId = effect.target === 'self' ? currentAttacker.id : currentDefender.id
-        nextStates[targetId] = applyBattleState(nextStates[targetId] || [], effect.type, effect.data || {})
-        const effectInfo = getBattleStateInfo([{ type: effect.type, turns: effect.data?.turns, stacks: effect.data?.stacks || 1 }])[0]
-        addLog(`${effectInfo?.icon || '✨'} ${effectInfo?.name || effect.type} aplicado a ${targetId === currentAttacker.id ? currentAttacker.name : currentDefender.name}.`, 'status', { icon: effectInfo?.icon || '✨', title: `¡${(effectInfo?.name || effect.type).toUpperCase()}!`, text: `${targetId === currentAttacker.id ? currentAttacker.name : currentDefender.name} ahora tiene ${effectInfo?.name || effect.type}.`, type: 'status' })
+      const engineAttacker = abilityEngineResult.state.players[currentAttacker.id]
+      const engineDefender = abilityEngineResult.state.players[currentDefender.id]
+      const newHp = Math.max(0, Number(engineDefender?.hp) || 0)
+      const newEnergy = Math.min(MAX_ENERGY, Number(engineAttacker?.energy) || 0)
+      if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
+      setHp(previousHp => ({ ...previousHp, [currentDefender.id]: newHp }))
+      setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: newEnergy }))
+      setBattleStates(previous => ({
+        ...previous,
+        [currentAttacker.id]: engineAttacker?.states || [],
+        [currentDefender.id]: engineDefender?.states || [],
+      }))
+      if (abilityBattleEffect?.type === 'heal_self' && result.type !== 'miss') {
+        const maxHp = getMaxHp(currentAttacker)
+        const currentHp = hp[currentAttacker.id] || 0
+        const healAmount = Math.round(maxHp * Number(abilityBattleEffect.data?.amount || 0))
+        const healedHp = Math.min(maxHp, currentHp + healAmount)
+        setHp(previousHp => ({ ...previousHp, [currentAttacker.id]: healedHp }))
+        addLog(`💚 ${currentAttacker.name} recupera ${healAmount} HP con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN!', text: `${currentAttacker.name} recuperó ${healAmount} HP.`, type: 'heal' })
       }
-      return nextStates
-    })
+    } else {
+      setBattleStates(previous => {
+        const engineState = {
+          players: Object.fromEntries(
+            Object.entries(previous).map(([id, states]) => [id, { states }]),
+          ),
+        }
+        const nextStates = Object.fromEntries(
+          Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]),
+        )
+        return nextStates
+      })
+    }
 
     if (ultimateBattleEffect?.type === 'full_heal_self') {
       const maxHp = getMaxHp(currentAttacker)
@@ -531,7 +571,19 @@ function BattlePage() {
       addLog(`💚 ${currentAttacker.name} recupera toda su vida con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN COMPLETA!', text: `${currentAttacker.name} recuperó toda su vida.`, type: 'heal' })
     }
 
-    if (action === 'basic' && result.type !== 'miss') {
+    if (action.startsWith('ability-')) {
+      const currentDefenderHp = hp[currentDefender.id] || 0
+      const engineState = {
+        players: {
+          [currentDefender.id]: { hp: currentDefenderHp },
+        },
+      }
+      const expectedHp = Math.max(0, currentDefenderHp - result.damage)
+      if (expectedHp <= 0) {
+        finishBattle(currentAttacker, currentDefender)
+        return
+      }
+    } else if (action === 'basic' && result.type !== 'miss') {
       const engineState = {
         players: {
           [currentAttacker.id]: {
