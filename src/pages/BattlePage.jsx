@@ -152,26 +152,23 @@ function BattlePage() {
   const characterADisplay = getTokataDisplayCharacter({ character: characterA, transformation: tokataTransformation })
   const currentEnergy = currentAttacker ? energy[currentAttacker.id] || 0 : 0
   const currentAbilities = getTokataAbilities({ character: currentAttacker, transformation: currentAttackerTransformation, metamorphosisAvailable: tokataMetamorphosisCooldown <= 0 })
-  const currentAbilityActions = useMemo(() => currentAbilities.map((ability, index) => ({
-    name: ability?.name || `Habilidad ${index + 1}`,
-    energyCost: Number(ability?.costs?.energy ?? ability?.energyCost ?? 25),
-    multiplier: Number(ability?.combat?.multiplier ?? ability?.multiplier ?? (1.45 + index * 0.15)),
-    guaranteedHit: Boolean(ability?.combat?.guaranteedHit ?? ability?.guaranteedHit),
-    criticalBonus: Number(ability?.combat?.criticalBonus ?? ability?.criticalBonus ?? 5),
-    dealsDamage: ability?.dealsDamage !== false && ability?.battleEffect?.type !== 'full_heal_self',
-  })), [currentAbilities])
-  const currentUltimateAbility = useMemo(() => currentAttacker?.profile?.ultimateAbility || {
-    id: 'ultimate',
-    name: currentAttacker?.profile?.ultimateName || 'Técnica definitiva',
-    costs: { energy: 100 },
-    combat: {
-      multiplier: 3,
-      guaranteedHit: true,
-      criticalBonus: 15,
-      ultimate: true,
-    },
-    effects: [{ type: 'damage_resolve', multiplier: 3 }],
-  }, [currentAttacker])
+  const currentAbilityActions = useMemo(() => currentAbilities.map((ability, index) => {
+    const effects = Array.isArray(ability?.effects)
+      ? ability.effects
+      : Array.isArray(ability?.steps)
+        ? ability.steps.flatMap(step => step?.effects || [])
+        : []
+    const damageEffect = effects.find(effect => effect?.type === 'damage_resolve')
+    return {
+      name: ability?.name || `Habilidad ${index + 1}`,
+      energyCost: Number(ability?.costs?.energy ?? 25),
+      multiplier: Number(ability?.combat?.multiplier ?? damageEffect?.multiplier ?? 1),
+      guaranteedHit: Boolean(ability?.combat?.guaranteedHit),
+      criticalBonus: Number(ability?.combat?.criticalBonus ?? 5),
+      dealsDamage: effects.some(effect => effect?.type === 'damage_resolve'),
+    }
+  }), [currentAbilities])
+  const currentUltimateAbility = useMemo(() => currentAttacker?.profile?.ultimateAbility || null, [currentAttacker])
 
   const currentUltimateAction = useMemo(() => {
     const effects = Array.isArray(currentUltimateAbility?.effects)
