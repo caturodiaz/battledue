@@ -4,8 +4,7 @@ import { chooseEnemyAction } from '../battle/ai/chooseEnemyAction'
 import { executeEnemyTurn } from '../battle/ai/executeEnemyTurn'
 import BattleResultScreen from '../components/BattleResultScreen'
 import { getBattleStateInfo } from '../battle/battleStateInfo'
-import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
-import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, resolveAttackState, startBattleTurn } from '../battle/engine'
+import { endBattleTurn, executeAbilityAction, executeBasicAction, executeBasicAttack, getAbilityBattleEffect, resolveAttackState, startBattleTurn } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -516,9 +515,6 @@ function BattlePage() {
       const actionEnergy = action === 'ultimate'
         ? 0
         : Math.max(0, currentEnergy - energyCost + (result.type === 'miss' ? 8 : result.critical ? 18 : 13))
-      const healAmount = effect?.type === 'heal_self' && result.type !== 'miss'
-        ? Math.round(getMaxHp(currentAttacker) * Number(effect.data?.amount || 0))
-        : 0
       const abilityEngineResult = executeAbilityAction(
         stateResult.state,
         currentAttacker.id,
@@ -529,8 +525,6 @@ function BattlePage() {
           energy: actionEnergy,
           hit: result.type !== 'miss',
           battleEffect: effect,
-          healAmount,
-          fullHeal: effect?.type === 'full_heal_self',
         },
       )
       const engineAttacker = abilityEngineResult.state.players[currentAttacker.id]
@@ -551,7 +545,7 @@ function BattlePage() {
         [currentDefender.id]: engineDefender?.states || [],
       }))
       if (effect?.type === 'heal_self' && result.type !== 'miss') {
-        addLog(`💚 ${currentAttacker.name} recupera ${healAmount} HP con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN!', text: `${currentAttacker.name} recuperó ${healAmount} HP.`, type: 'heal' })
+        addLog(`💚 ${currentAttacker.name} recupera ${abilityEngineResult.healing} HP con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN!', text: `${currentAttacker.name} recuperó ${abilityEngineResult.healing} HP.`, type: 'heal' })
       }
       if (effect?.type === 'full_heal_self' && result.type !== 'miss') {
         setHealingCharacterId(currentAttacker.id)

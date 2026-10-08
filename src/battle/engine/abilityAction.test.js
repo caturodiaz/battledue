@@ -47,11 +47,11 @@ test('ability action heals the source without exceeding max hp', () => {
   const result = executeAbilityAction(state, 'attacker', 'defender', {
     damage: 20,
     energy: 38,
-    healAmount: 12,
     battleEffect: { type: 'heal_self', target: 'self', amount: 0.12 },
   })
 
   assert.equal(result.state.players.attacker.hp, 72)
+  assert.equal(result.healing, 12)
 })
 
 test('full heal restores the source to max hp', () => {
@@ -62,12 +62,12 @@ test('full heal restores the source to max hp', () => {
   const result = executeAbilityAction(state, 'attacker', 'defender', {
     damage: 20,
     energy: 0,
-    fullHeal: true,
     hit: true,
     battleEffect: { type: 'full_heal_self', target: 'self' },
   })
 
   assert.equal(result.state.players.attacker.hp, 100)
+  assert.equal(result.healing, 65)
 })
 
 test('missed healing ability does not heal the source', () => {
@@ -77,12 +77,12 @@ test('missed healing ability does not heal the source', () => {
   const result = executeAbilityAction(state, 'attacker', 'defender', {
     damage: 0,
     energy: 33,
-    healAmount: 12,
     hit: false,
     battleEffect: { type: 'heal_self', target: 'self', amount: 0.12 },
   })
 
   assert.equal(result.state.players.attacker.hp, 60)
+  assert.equal(result.healing, 0)
 })
 
 test('ability action applies stunned to the enemy', () => {

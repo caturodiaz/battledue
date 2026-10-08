@@ -83,10 +83,17 @@ function executeLegacyAbility(legacyState, sourceId, targetId, options = {}) {
     energy = 0,
     battleEffect = null,
     hit = true,
-    healAmount = 0,
-    fullHeal = false,
+    healAmount: legacyHealAmount = 0,
+    fullHeal: legacyFullHeal = false,
     ...actionOptions
   } = options
+
+  const source = legacyState?.players?.[sourceId] || {}
+  const effectAmount = Number(battleEffect?.data?.amount ?? battleEffect?.amount)
+  const calculatedHealAmount = battleEffect?.type === 'heal_self'
+    ? Math.round(Math.max(0, Number(source.max_hp) || 0) * Math.max(0, effectAmount || 0))
+    : Math.max(0, Number(legacyHealAmount) || 0)
+  const fullHeal = battleEffect?.type === 'full_heal_self' || legacyFullHeal
 
   const effects = []
 
@@ -106,11 +113,11 @@ function executeLegacyAbility(legacyState, sourceId, targetId, options = {}) {
 
   effects.push({ type: 'battle_state_decrement_all' })
 
-  if (hit && (Number(healAmount) > 0 || fullHeal)) {
+  if (hit && (calculatedHealAmount > 0 || fullHeal)) {
     effects.push({
       type: 'heal',
       target: 'source',
-      value: fullHeal ? Number.MAX_SAFE_INTEGER : Number(healAmount),
+      value: fullHeal ? Number.MAX_SAFE_INTEGER : calculatedHealAmount,
     })
   }
 
@@ -142,6 +149,7 @@ function executeLegacyAbility(legacyState, sourceId, targetId, options = {}) {
 
   return {
     ...result,
+    healing: hit ? (fullHeal ? Math.max(0, (Number(source.max_hp) || 0) - (Number(source.hp) || 0)) : calculatedHealAmount) : 0,
     state: fromEngineState(result.state),
   }
 }
