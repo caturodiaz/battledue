@@ -25,6 +25,45 @@ function resolveTargetId(effect, sourceId, targetId) {
   return effect?.targetId || targetId
 }
 
+function applyBattleStateAdd(state, sourceId, targetId, effect) {
+  const resolvedTargetId = resolveTargetId(effect, sourceId, targetId)
+  if (!resolvedTargetId || !effect.state) return state
+
+  const unit = getUnit(state, resolvedTargetId)
+  const targetStates = Array.isArray(unit.states) ? unit.states : []
+  const turns = Math.max(
+    0,
+    Number(effect.duration ?? effect.turns) || 0,
+  )
+  const stacks = Math.max(1, Number(effect.stacks) || 1)
+  const existingIndex = targetStates.findIndex((battleState) => battleState?.type === effect.state)
+
+  let nextUnit
+
+  if (existingIndex === -1) {
+    nextUnit = {
+      ...unit,
+      states: [...targetStates, { type: effect.state, turns, stacks }],
+    }
+  } else {
+    const nextStates = targetStates.map((battleState, index) => {
+      if (index !== existingIndex) return battleState
+
+      return {
+        ...battleState,
+        turns: Math.max(Number(battleState.turns) || 0, turns),
+        stacks: battleState.type === 'bleeding'
+          ? Math.min(3, (Number(battleState.stacks) || 0) + stacks)
+          : Number(battleState.stacks) || stacks,
+      }
+    })
+
+    nextUnit = { ...unit, states: nextStates }
+  }
+
+  return setUnit(state, resolvedTargetId, nextUnit)
+}
+
 export function applyEffect(state, sourceId, targetId, effect) {
   if (!effect || typeof effect !== 'object') return state
 
@@ -44,8 +83,12 @@ export function applyEffect(state, sourceId, targetId, effect) {
     }
 
     case 'heal': {
-      const amount = Math.max(0, Number(effect.value) || 0)
       const maxHp = Number(unit.max_hp) || DEFAULT_MAX_HP
+      const amount = effect.full === true
+        ? Math.max(0, maxHp - (Number(unit.hp) || 0))
+        : effect.percent != null
+          ? Math.max(0, maxHp * Number(effect.percent))
+          : Math.max(0, Number(effect.value) || 0)
       const hp = clamp((Number(unit.hp) || 0) + amount, 0, maxHp)
       nextUnit = { ...unit, hp }
       break
@@ -73,6 +116,18 @@ export function applyEffect(state, sourceId, targetId, effect) {
       } else {
         nextUnit = { ...unit, [resource]: value }
       }
+      break
+    }
+
+    case 'state_add':
+    case 'battle_state_add':
+      return applyBattleStateAdd(state, sourceId, targetId, effect)
+
+    case 'state_remove':
+    case 'battle_state_remove': {
+      if (!effect.state) return state
+      const states = Array.isArray(unit.states) ? unit.states : []
+      nextUnit = { ...unit, states: states.filter((battleState) => battleState?.type !== effect.state) }
       break
     }
 
@@ -127,34 +182,6 @@ export function applyEffect(state, sourceId, targetId, effect) {
         }),
       )
       return { ...state, players }
-    }
-
-    case 'battle_state_add': {
-      if (!effect.state) return state
-      const targetStates = Array.isArray(unit.states) ? unit.states : []
-      const turns = Math.max(0, Number(effect.turns) || 0)
-      const stacks = Math.max(1, Number(effect.stacks) || 1)
-      const existingIndex = targetStates.findIndex((battleState) => battleState?.type === effect.state)
-
-      if (existingIndex === -1) {
-        nextUnit = {
-          ...unit,
-          states: [...targetStates, { type: effect.state, turns, stacks }],
-        }
-      } else {
-        const nextStates = targetStates.map((battleState, index) => {
-          if (index !== existingIndex) return battleState
-          return {
-            ...battleState,
-            turns: Math.max(Number(battleState.turns) || 0, turns),
-            stacks: battleState.type === 'bleeding'
-              ? Math.min(3, (Number(battleState.stacks) || 0) + stacks)
-              : Number(battleState.stacks) || stacks,
-          }
-        })
-        nextUnit = { ...unit, states: nextStates }
-      }
-      break
     }
 
     case 'flag_set': {
