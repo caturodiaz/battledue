@@ -4,3 +4,4 @@ export { triggerMatchesEvent, applyTriggers, processQueuedTriggers } from './tri
 export { createBattleState, processBattleEvents, executeBattleAction, clearBattleEvents } from './battleEngine.js'
 export { toEngineState, fromEngineState } from './stateAdapter.js'
 export { BASIC_ACTIONS, executeBasicAction } from './actions.js'
+export { BASIC_ATTACK, executeBasicAttack } from './attackAction.js'
