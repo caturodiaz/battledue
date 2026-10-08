@@ -12,6 +12,7 @@ import {
   processBattleStateStartOfTurn,
 } from '../battle/ai/battleStates'
 import { getAbilityBattleEffect } from '../battle/ai/battleAbilityEffects'
+import { executeBasicAttack } from '../battle/engine'
 import {
   playAttackSound,
   playEnergyReadySound,
@@ -417,9 +418,11 @@ function BattlePage() {
     if (stateResult.consumeEvasion) setBattleStates(previous => ({ ...previous, [currentDefender.id]: consumeEvasion(previous[currentDefender.id] || []) }))
     setCombatEffect(result.type)
     setTimeout(() => setCombatEffect(null), 550)
-    const newEnergy = Math.max(0, currentEnergy - energyCost + (action === 'ultimate' ? 0 : result.type === 'miss' ? 8 : result.critical ? 18 : 13))
-    if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
-    setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: Math.min(MAX_ENERGY, newEnergy) }))
+    if (action !== 'basic') {
+      const newEnergy = Math.max(0, currentEnergy - energyCost + (action === 'ultimate' ? 0 : result.type === 'miss' ? 8 : result.critical ? 18 : 13))
+      if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
+      setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: Math.min(MAX_ENERGY, newEnergy) }))
+    }
 
     if (result.type === 'miss') {
       playDodgeSound()
@@ -471,7 +474,45 @@ function BattlePage() {
       addLog(`💚 ${currentAttacker.name} recupera toda su vida con ${actionName}.`, 'heal', { icon: '💚', title: '¡CURACIÓN COMPLETA!', text: `${currentAttacker.name} recuperó toda su vida.`, type: 'heal' })
     }
 
-    if (result.damage > 0) {
+    if (action === 'basic' && result.type !== 'miss') {
+      const engineState = {
+        players: {
+          [currentAttacker.id]: {
+            hp: hp[currentAttacker.id] || 0,
+            energy: currentEnergy,
+            stats: getStats(currentAttacker),
+            defending: defending[currentAttacker.id] || false,
+          },
+          [currentDefender.id]: {
+            hp: hp[currentDefender.id] || 0,
+            max_hp: getMaxHp(currentDefender),
+            stats: getStats(currentDefender),
+            defending: defending[currentDefender.id] || false,
+          },
+        },
+        combat_events: [],
+        event_history: [],
+      }
+      const engineResult = executeBasicAttack(
+        engineState,
+        currentAttacker.id,
+        currentDefender.id,
+        { resolvedAmount: result.damage, critical: result.critical },
+      )
+      const engineAttacker = engineResult.state.players[currentAttacker.id]
+      const engineDefender = engineResult.state.players[currentDefender.id]
+      const newHp = Math.max(0, Number(engineDefender?.hp) || 0)
+      const newEnergy = Math.min(MAX_ENERGY, Number(engineAttacker?.energy) || 0)
+      if (currentEnergy < MAX_ENERGY && newEnergy >= MAX_ENERGY) playEnergyReadySound()
+      setHp(previousHp => ({ ...previousHp, [currentDefender.id]: newHp }))
+      setEnergy(previousEnergy => ({ ...previousEnergy, [currentAttacker.id]: newEnergy }))
+      setHpFlash(previous => ({ ...previous, [currentDefender.id]: true }))
+      setTimeout(() => setHpFlash(previous => ({ ...previous, [currentDefender.id]: false })), 500)
+      if (newHp <= 0) {
+        finishBattle(currentAttacker, currentDefender)
+        return
+      }
+    } else if (result.damage > 0) {
       setHpFlash(previous => ({ ...previous, [currentDefender.id]: true }))
       setTimeout(() => setHpFlash(previous => ({ ...previous, [currentDefender.id]: false })), 500)
       const currentHp = hp[currentDefender.id] || 0
