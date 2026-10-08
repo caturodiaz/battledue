@@ -182,15 +182,18 @@ function BattlePage() {
   const currentAbilities = getTokataAbilities({ character: currentAttacker, transformation: currentAttackerTransformation, metamorphosisAvailable: tokataMetamorphosisCooldown <= 0 })
 
   useEffect(() => {
-    if (characters.length >= 2 && !characterAId && !characterBId) {
+    if (characters.length < 2 || characterAId || characterBId) return
+    const initializeCharacters = setTimeout(() => {
       setCharacterAId(characters[0].id)
       setCharacterBId(characters[1].id)
-    }
+    }, 0)
+    return () => clearTimeout(initializeCharacters)
   }, [characters, characterAId, characterBId])
 
   useEffect(() => {
     if (!currentAttacker || !battleStarted || battlePhase !== 'fighting') return
-    setSelectedAction('basic')
+    const resetSelectedAction = setTimeout(() => setSelectedAction('basic'), 0)
+    return () => clearTimeout(resetSelectedAction)
   }, [currentAttackerId, battleStarted, currentAttacker, battlePhase])
 
   useEffect(() => {
@@ -532,7 +535,9 @@ function BattlePage() {
     setTimeout(() => setIsProcessingTurn(false), 350)
   }
 
-  performActionRef.current = performAction
+  useEffect(() => {
+    performActionRef.current = performAction
+  }, [performAction])
 
   useEffect(() => {
     if (!battleStarted || isBattleFinished || battlePhase !== 'fighting' || isProcessingTurn || !currentAttacker || !currentDefender) return
