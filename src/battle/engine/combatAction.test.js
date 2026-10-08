@@ -10,7 +10,7 @@ function createState() {
         hp: 100,
         max_hp: 100,
         energy: 50,
-        stats: { strength: 10, range: 0, control: 0 },
+        stats: { strength: 5, range: 0, control: 0 },
         defending: false,
         states: [],
       },
