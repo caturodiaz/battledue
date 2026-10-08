@@ -66,6 +66,31 @@ test('executes a declarative ability without exposing combat resolution to the c
   assert.equal(result.state.players.attacker.energy, 43)
 })
 
+test('executes a legacy ability through the unified combat action', () => {
+  const result = executeCombatAction(createState(), 'attacker', 'defender', {
+    type: 'ability',
+    ability: {
+      name: 'Bleeding Strike',
+      battleEffect: { type: 'bleeding', target: 'enemy', turns: 3, stacks: 1 },
+    },
+    attackOptions: {
+      multiplier: 1.45,
+      energyCost: 25,
+      guaranteedHit: true,
+      criticalBonus: 5,
+      randomFactor: 1,
+      random: () => 0.99,
+    },
+  })
+
+  assert.equal(result.attack.type, 'hit')
+  assert.equal(result.state.players.defender.hp, 77)
+  assert.equal(result.state.players.attacker.energy, 38)
+  assert.deepEqual(result.state.players.defender.states, [
+    { type: 'bleeding', turns: 3, stacks: 1 },
+  ])
+})
+
 test('executes ability effects after a miss without applying hit-dependent effects', () => {
   const result = executeCombatAction(createState(), 'attacker', 'defender', {
     type: 'ability',
