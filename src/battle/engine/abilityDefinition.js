@@ -13,9 +13,7 @@ export function createAbilityAction(ability = {}) {
         events: Array.isArray(step?.events) ? step.events : [],
         effects: Array.isArray(step?.effects) ? step.effects : [],
       }))
-    : normalized.effects.length > 0
-      ? [{ effects: normalized.effects }]
-      : []
+    : normalized.effects.map((effect) => ({ effects: [effect] }))
 
   const abilityUsedEvent = {
     type: 'ability_used',

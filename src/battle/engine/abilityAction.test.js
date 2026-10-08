@@ -97,6 +97,18 @@ test('ability action applies stunned to the enemy', () => {
   ])
 })
 
+test('declarative ability resolves damage using its multiplier', () => {
+  const result = executeAbilityAction(createState(), 'attacker', 'defender', {
+    ability: {
+      id: 'heavy-strike',
+      name: 'Heavy Strike',
+      effects: [{ type: 'damage_resolve', multiplier: 2 }],
+    },
+  })
+
+  assert.equal(result.state.players.defender.hp, 50)
+})
+
 test('declarative ability resolves ordered damage, state and resource effects', () => {
   const state = createState()
   state.players.attacker.energy = 50
@@ -123,6 +135,28 @@ test('declarative ability resolves ordered damage, state and resource effects', 
   assert.equal(result.state.players.attacker.energy, 30)
   assert.deepEqual(result.state.players.defender.states, [
     { type: 'bleeding', turns: 3, stacks: 2 },
+  ])
+})
+
+test('declarative state application refreshes duration and stacks bleeding', () => {
+  const state = createState()
+  state.players.defender.states = [
+    { type: 'bleeding', turns: 1, stacks: 1 },
+  ]
+
+  const result = executeAbilityAction(state, 'attacker', 'defender', {
+    ability: {
+      id: 'double-bleed',
+      name: 'Double Bleed',
+      effects: [
+        { type: 'state_add', target: 'enemy', state: 'bleeding', duration: 3, stacks: 2 },
+      ],
+    },
+    combatResult: { hit: true },
+  })
+
+  assert.deepEqual(result.state.players.defender.states, [
+    { type: 'bleeding', turns: 3, stacks: 3 },
   ])
 })
 
