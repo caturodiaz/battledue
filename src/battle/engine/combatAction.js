@@ -1,5 +1,4 @@
 import { executeAbilityAction } from './abilityAction.js'
-import { getAbilityBattleEffect } from './abilityEffects.js'
 import { executeBasicAttack } from './attackAction.js'
 import { executeBasicAction } from './actions.js'
 import { resolveCombatAttack } from './attackResolution.js'
@@ -12,39 +11,23 @@ function resolveAttack(state, sourceId, targetId, options = {}) {
   })
 }
 
-function isDeclarativeAbility(ability = {}) {
-  return Array.isArray(ability.effects)
-    || Array.isArray(ability.steps)
-    || Array.isArray(ability.triggers)
-}
-
 function getAbilityCombat(ability = {}) {
   const effects = [
     ...(Array.isArray(ability.effects) ? ability.effects : []),
     ...(Array.isArray(ability.steps) ? ability.steps.flatMap((step) => step?.effects || []) : []),
   ]
-
   const damageEffect = effects.find((effect) => effect?.type === 'damage_resolve')
 
   return {
     ...(ability.combat || {}),
-    multiplier: ability.combat?.multiplier
-      ?? damageEffect?.multiplier
-      ?? ability.multiplier
-      ?? 1,
+    multiplier: ability.combat?.multiplier ?? damageEffect?.multiplier ?? 1,
     guaranteedHit: ability.combat?.guaranteedHit ?? ability.guaranteedHit,
     criticalBonus: ability.combat?.criticalBonus ?? ability.criticalBonus ?? 0,
     ultimate: ability.combat?.ultimate ?? ability.ultimate,
   }
 }
 
-/**
- * Executes one complete combat action.
- *
- * The caller provides intent and the engine owns hit/critical/damage
- * resolution plus the action's declarative effects.
- */
-export function executeCombatAction(legacyState, sourceId, targetId, action = {}) {
+export function executeCombatAction(state, sourceId, targetId, action = {}) {
   const {
     type = 'basic',
     ability = null,
@@ -53,37 +36,22 @@ export function executeCombatAction(legacyState, sourceId, targetId, action = {}
     ...options
   } = action
 
-  if (type === 'defend') {
-    return executeBasicAction(legacyState, sourceId, targetId, 'defend', options)
-  }
+  if (type === 'defend') return executeBasicAction(state, sourceId, targetId, 'defend', options)
 
   if (type === 'basic') {
-    const attackResult = resolveAttack(
-      legacyState,
-      sourceId,
-      targetId,
-      attackOptions,
-    )
-
-    const result = executeBasicAttack(
-      attackResult.state,
-      sourceId,
-      targetId,
-      {
-        ...options,
-        resolvedAmount: attackResult.damage,
-        critical: attackResult.critical,
-        hit: attackResult.hit,
-      },
-    )
-
-    return {
-      ...result,
-      attack: attackResult,
-    }
+    const attackResult = resolveAttack(state, sourceId, targetId, attackOptions)
+    const result = executeBasicAttack(attackResult.state, sourceId, targetId, {
+      ...options,
+      resolvedAmount: attackResult.damage,
+      critical: attackResult.critical,
+      hit: attackResult.hit,
+    })
+    return { ...result, attack: attackResult }
   }
 
   if (type === 'ability' || type === 'ultimate') {
+    if (!ability) throw new Error('Declarative ability is required')
+
     const abilityCombat = getAbilityCombat(ability)
     const attackConfig = {
       ...abilityCombat,
@@ -95,14 +63,8 @@ export function executeCombatAction(legacyState, sourceId, targetId, action = {}
       ultimate: type === 'ultimate' || Boolean(attackOptions.ultimate) || Boolean(abilityCombat.ultimate),
     }
 
-    const attackResult = resolveAttack(
-      legacyState,
-      sourceId,
-      targetId,
-      attackConfig,
-    )
-
-    const abilityOptionsForExecution = {
+    const attackResult = resolveAttack(state, sourceId, targetId, attackConfig)
+    const abilityResult = executeAbilityAction(attackResult.state, sourceId, targetId, {
       ...options,
       ...abilityOptions,
       combatResult: {
@@ -111,31 +73,10 @@ export function executeCombatAction(legacyState, sourceId, targetId, action = {}
         damage: attackResult.damage,
         ultimate: attackConfig.ultimate,
       },
-      hit: attackResult.hit,
-      critical: attackResult.critical,
-      damage: attackResult.damage,
-      energy: attackResult.energy,
-      battleEffect: abilityOptions.battleEffect ?? getAbilityBattleEffect(ability),
-    }
+      ability,
+    })
 
-    const abilityResult = isDeclarativeAbility(ability)
-      ? executeAbilityAction(
-          attackResult.state,
-          sourceId,
-          targetId,
-          { ...abilityOptionsForExecution, ability },
-        )
-      : executeAbilityAction(
-          attackResult.state,
-          sourceId,
-          targetId,
-          abilityOptionsForExecution,
-        )
-
-    return {
-      ...abilityResult,
-      attack: attackResult,
-    }
+    return { ...abilityResult, attack: attackResult }
   }
 
   throw new Error(`Unsupported combat action: ${type}`)
