@@ -162,6 +162,7 @@ begin
       v_action_name := coalesce(v_ability->>'name', 'Habilidad');
       v_type := 'ability';
       if v_is_metamorphosis then
+        v_new_energy := v_energy;
         v_message := format('🪞 %s adopta la forma de %s.', v_attacker_char.name, v_defender_char.name);
         v_attacker := jsonb_set(
           v_attacker,
@@ -357,10 +358,10 @@ begin
           end if;
           if v_target_id = v_attacker_id then
             v_attacker_states := v_target_states;
+            v_applied_state_types := array_append(v_applied_state_types, v_state_type);
           else
             v_defender_states := v_target_states;
           end if;
-          v_applied_state_types := array_append(v_applied_state_types, v_state_type);
 
         elsif v_effect_type in ('state_remove', 'state_stack_remove') then
           v_state_type := coalesce(v_effect->>'state', '');
