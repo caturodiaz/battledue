@@ -65,6 +65,7 @@ declare
   v_guaranteed_hit boolean := false;
   v_was_defending boolean := false;
   v_message text;
+  v_log jsonb;
   v_round integer;
   v_action_name text := 'Ataque básico';
   v_type text := 'attack';
