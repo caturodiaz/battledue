@@ -53,3 +53,20 @@ test('normalizes optional ability fields', () => {
   assert.deepEqual(result.conditions, [])
   assert.deepEqual(result.triggers, [])
 })
+
+test('rejects unsupported state stack effects', () => {
+  const result = validateAbility({
+    id: 'unsupported-stacks',
+    name: 'Unsupported stacks',
+    effects: [
+      { type: 'state_stack_add' },
+      { type: 'state_stack_remove' },
+    ],
+  })
+
+  assert.equal(result.valid, false)
+  assert.deepEqual(result.errors, [
+    'invalid effect type at effects: state_stack_add',
+    'invalid effect type at effects: state_stack_remove',
+  ])
+})
