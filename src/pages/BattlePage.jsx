@@ -294,6 +294,7 @@ function BattlePage() {
     const action = actionOverride || selectedAction
     if (typeof action !== 'string') { console.error('⚠️ Acción inválida:', action); return }
 
+    let currentAttackerHp = hp[currentAttacker.id] || 0
     const turnStateKey = `${turn}-${currentAttacker.id}`
     if (processedTurnRef.current !== turnStateKey) {
       processedTurnRef.current = turnStateKey
@@ -304,8 +305,9 @@ function BattlePage() {
           states: battleStates[id] || [],
         }])),
       }, currentAttacker.id)
+      currentAttackerHp = turnStartResult.state.players[currentAttacker.id].hp
       if (turnStartResult.hpChange !== 0) {
-        setHp(previousHp => ({ ...previousHp, [currentAttacker.id]: turnStartResult.state.players[currentAttacker.id].hp }))
+        setHp(previousHp => ({ ...previousHp, [currentAttacker.id]: currentAttackerHp }))
         if (turnStartResult.hpChange < 0) {
           setHpFlash(previous => ({ ...previous, [currentAttacker.id]: true }))
           setTimeout(() => setHpFlash(previous => ({ ...previous, [currentAttacker.id]: false })), 500)
@@ -328,7 +330,7 @@ function BattlePage() {
       setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
       setBattleStates(previous => {
         const engineState = { players: Object.fromEntries(Object.entries(previous).map(([id, states]) => [id, { states }])) }
-        return Object.fromEntries(Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]))
+        return Object.fromEntries(Object.entries(endBattleTurn(engineState, currentAttacker.id).players).map(([id, player]) => [id, player.states]))
       })
       setCurrentAttackerId(currentDefender.id)
       setTurn(previousTurn => previousTurn + 1)
@@ -407,7 +409,7 @@ function BattlePage() {
 
     const engineState = {
       players: {
-        [currentAttacker.id]: { hp: hp[currentAttacker.id] || 0, max_hp: getMaxHp(currentAttacker), energy: currentEnergy, stats: getStats(currentAttacker), defending: defending[currentAttacker.id] || false, states: battleStates[currentAttacker.id] || [] },
+        [currentAttacker.id]: { hp: currentAttackerHp, max_hp: getMaxHp(currentAttacker), energy: currentEnergy, stats: getStats(currentAttacker), defending: defending[currentAttacker.id] || false, states: battleStates[currentAttacker.id] || [] },
         [currentDefender.id]: { hp: hp[currentDefender.id] || 0, max_hp: getMaxHp(currentDefender), energy: energy[currentDefender.id] || 0, stats: getStats(currentDefender), defending: defending[currentDefender.id] || false, states: battleStates[currentDefender.id] || [] },
       },
       combat_events: [],
@@ -458,13 +460,21 @@ function BattlePage() {
       }
     }
 
-    if (actionType === 'defend' || actionType === 'attack') {
-      setBattleStates(previous => {
-        const stateForTurnEnd = { ...result.state, players: Object.fromEntries(Object.entries(result.state.players).map(([id, player]) => [id, { states: player.states }])) }
-        const nextStates = Object.fromEntries(Object.entries(endBattleTurn(stateForTurnEnd).players).map(([id, player]) => [id, player.states]))
-        return { ...previous, ...nextStates }
-      })
-    }
+    setBattleStates(previous => {
+      const stateForTurnEnd = { ...result.state, players: Object.fromEntries(Object.entries(result.state.players).map(([id, player]) => [id, { states: player.states }])) }
+      const previousAttackerStates = battleStates[currentAttacker.id] || []
+      const nextAttackerStates = result.state.players[currentAttacker.id]?.states || []
+      const refreshedStateTypes = nextAttackerStates
+        .filter(state => {
+          const previousState = previousAttackerStates.find(item => item?.type === state?.type)
+          return !previousState || previousState.turns !== state.turns || previousState.stacks !== state.stacks
+        })
+        .map(state => state.type)
+      const nextStates = Object.fromEntries(Object.entries(
+        endBattleTurn(stateForTurnEnd, currentAttacker.id, refreshedStateTypes).players
+      ).map(([id, player]) => [id, player.states]))
+      return { ...previous, ...nextStates }
+    })
 
     if (newDefenderHp <= 0) { finishBattle(currentAttacker, currentDefender); return }
     if (newAttackerHp <= 0) { finishBattle(currentDefender, currentAttacker); return }
