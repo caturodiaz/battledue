@@ -65,7 +65,6 @@ export function executeCombatAction(state, sourceId, targetId, action = {}) {
     const attackResult = resolveAttack(state, sourceId, targetId, attackConfig)
     const abilityResult = executeAbilityAction(attackResult.state, sourceId, targetId, {
       ...options,
-      ...abilityOptions,
       combatResult: {
         hit: attackResult.hit,
         critical: attackResult.critical,
