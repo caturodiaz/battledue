@@ -208,3 +208,24 @@ test('executes a declarative full-heal ultimate without damage', () => {
   assert.equal(result.healing, 65)
   assert.equal(result.state.players.attacker.energy, 0)
 })
+
+test('ignores legacy top-level combat metadata in favor of declarative combat fields', () => {
+  const result = executeCombatAction(createState(), 'attacker', 'defender', {
+    type: 'ability',
+    ability: {
+      id: 'explicit-combat',
+      name: 'Explicit Combat',
+      multiplier: 9,
+      guaranteedHit: true,
+      criticalBonus: 40,
+      effects: [{ type: 'damage_resolve', multiplier: 1 }],
+    },
+    attackOptions: {
+      random: () => 0.99,
+      randomFactor: 1,
+    },
+  })
+
+  assert.equal(result.attack.type, 'miss')
+  assert.equal(result.state.players.defender.hp, 100)
+})
