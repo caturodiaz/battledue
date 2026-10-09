@@ -19,8 +19,6 @@ const VALID_EFFECT_TYPES = new Set([
   'resource_add',
   'state_add',
   'state_remove',
-  'state_stack_add',
-  'state_stack_remove',
   'modifier',
   'delay',
   'snapshot',
