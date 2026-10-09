@@ -74,6 +74,8 @@ declare
   v_state_turns integer;
   v_state_stacks integer;
   v_winner_id uuid;
+  v_bleeding_damage numeric := 0;
+  v_start_turn_message text;
 begin
   select * into v_room
   from public.battle_rooms
@@ -121,6 +123,39 @@ begin
   v_energy := least(100, greatest(0, coalesce((v_attacker->>'energy')::numeric, 0)));
   v_def_energy := least(100, greatest(0, coalesce((v_defender->>'energy')::numeric, 0)));
   v_was_defending := coalesce((v_defender->>'defending')::boolean, false);
+
+  -- Resolve bleeding at the start of the acting player's turn.
+  select s into v_existing_state
+  from jsonb_array_elements(v_attacker_states) s
+  where s->>'type' = 'bleeding'
+  limit 1;
+  if v_existing_state is not null then
+    v_bleeding_damage := greatest(1, floor(v_max_hp * 0.05))
+      * greatest(1, coalesce((v_existing_state->>'stacks')::numeric, 1));
+    v_hp := greatest(0, v_hp - v_bleeding_damage);
+    v_start_turn_message := format('🩸 Sangrado causa %s de daño.', v_bleeding_damage);
+    if v_hp <= 0 then
+      v_attacker := jsonb_set(v_attacker, '{hp}', to_jsonb(0::numeric), true);
+      v_attacker := jsonb_set(v_attacker, '{states}', v_attacker_states, true);
+      v_players := jsonb_set(v_players, array[v_attacker_id::text], v_attacker, true);
+      v_state := jsonb_set(v_state, '{players}', v_players, true);
+      v_state := jsonb_set(v_state, '{winner_user_id}', to_jsonb(v_defender_id), true);
+      v_state := jsonb_set(v_state, '{status}', to_jsonb('finished'::text), true);
+      v_log := coalesce(v_state->'log', '[]'::jsonb) || jsonb_build_array(jsonb_build_object(
+        'id', pg_catalog.gen_random_uuid(),
+        'user_id', v_attacker_id,
+        'action', 'status_tick',
+        'action_name', 'Sangrado',
+        'type', 'status',
+        'message', v_start_turn_message,
+        'damage', v_bleeding_damage,
+        'critical', false
+      ));
+      v_state := jsonb_set(v_state, '{log}', v_log, true);
+      update public.battle_rooms set battle_state = v_state, status = 'finished' where id = p_room_id;
+      return v_state;
+    end if;
+  end if;
 
   v_is_tokata := v_attacker_char.id::text = v_tokata_id or v_attacker_char.name = 'Tokata';
   v_is_transformed := v_is_tokata
@@ -409,10 +444,13 @@ begin
         v_message := format('%s %s causa %s de daño a %s.',
           case when v_critical then '💥 ¡CRÍTICO!' else '⚔️' end,
           v_attacker_char.name, v_damage, v_defender_char.name);
+        if v_start_turn_message is not null then v_message := v_start_turn_message || ' ' || v_message; end if;
       elsif v_total_healing > 0 then
         v_message := format('💚 %s recupera %s de vida.', v_attacker_char.name, v_total_healing);
+        if v_start_turn_message is not null then v_message := v_start_turn_message || ' ' || v_message; end if;
       elsif v_message is null then
         v_message := format('✨ %s usa %s.', v_attacker_char.name, v_action_name);
+        if v_start_turn_message is not null then v_message := v_start_turn_message || ' ' || v_message; end if;
       end if;
     end if;
   end if;
