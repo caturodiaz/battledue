@@ -70,3 +70,16 @@ test('rejects unsupported state stack effects', () => {
     'invalid effect type at effects: state_stack_remove',
   ])
 })
+
+test('rejects fixed damage effects in declarative abilities', () => {
+  const result = validateAbility({
+    id: 'fixed-damage',
+    name: 'Fixed Damage',
+    effects: [{ type: 'damage', value: 20 }],
+  })
+
+  assert.equal(result.valid, false)
+  assert.deepEqual(result.errors, [
+    'invalid effect type at effects: damage',
+  ])
+})
