@@ -108,3 +108,39 @@ test('processBattleStateStartOfTurn enforces minimum bleeding damage', async () 
 
   assert.equal(result.hpChange, -1)
 })
+
+
+test('endBattleTurn decrements only the active fighter when a unit id is provided', () => {
+  const state = {
+    players: {
+      attacker: { states: [{ type: 'rage', turns: 2, stacks: 1 }] },
+      defender: { states: [{ type: 'bleeding', turns: 3, stacks: 1 }] },
+    },
+  }
+
+  const result = endBattleTurn(state, 'attacker')
+
+  assert.deepEqual(result.players.attacker.states, [{ type: 'rage', turns: 1, stacks: 1 }])
+  assert.deepEqual(result.players.defender.states, [{ type: 'bleeding', turns: 3, stacks: 1 }])
+})
+
+test('endBattleTurn preserves statuses refreshed during the active turn', () => {
+  const state = {
+    players: {
+      attacker: {
+        states: [
+          { type: 'bleeding', turns: 3, stacks: 2 },
+          { type: 'rage', turns: 2, stacks: 1 },
+        ],
+      },
+      defender: { states: [] },
+    },
+  }
+
+  const result = endBattleTurn(state, 'attacker', ['bleeding'])
+
+  assert.deepEqual(result.players.attacker.states, [
+    { type: 'bleeding', turns: 3, stacks: 2 },
+    { type: 'rage', turns: 1, stacks: 1 },
+  ])
+})
