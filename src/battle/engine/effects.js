@@ -1,0 +1,214 @@
+const DEFAULT_MAX_HP = 999999999
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function getUnit(state, unitId) {
+  return state?.players?.[unitId] || {}
+}
+
+function setUnit(state, unitId, unit) {
+  return {
+    ...state,
+    players: {
+      ...(state?.players || {}),
+      [unitId]: unit,
+    },
+  }
+}
+
+function resolveTargetId(effect, sourceId, targetId) {
+  const target = effect?.target || 'target'
+  if (target === 'self' || target === 'source') return sourceId
+  if (target === 'target' || target === 'enemy') return targetId
+  return effect?.targetId || targetId
+}
+
+function applyBattleStateAdd(state, sourceId, targetId, effect) {
+  const resolvedTargetId = resolveTargetId(effect, sourceId, targetId)
+  if (!resolvedTargetId || !effect.state) return state
+
+  const unit = getUnit(state, resolvedTargetId)
+  const targetStates = Array.isArray(unit.states) ? unit.states : []
+  const turns = Math.max(
+    0,
+    Number(effect.duration ?? effect.turns) || 0,
+  )
+  const stacks = Math.max(1, Number(effect.stacks) || 1)
+  const existingIndex = targetStates.findIndex((battleState) => battleState?.type === effect.state)
+
+  let nextUnit
+
+  if (existingIndex === -1) {
+    nextUnit = {
+      ...unit,
+      states: [...targetStates, { type: effect.state, turns, stacks }],
+    }
+  } else {
+    const nextStates = targetStates.map((battleState, index) => {
+      if (index !== existingIndex) return battleState
+
+      return {
+        ...battleState,
+        turns: Math.max(Number(battleState.turns) || 0, turns),
+        stacks: battleState.type === 'bleeding'
+          ? Math.min(3, (Number(battleState.stacks) || 0) + stacks)
+          : Number(battleState.stacks) || stacks,
+      }
+    })
+
+    nextUnit = { ...unit, states: nextStates }
+  }
+
+  return setUnit(state, resolvedTargetId, nextUnit)
+}
+
+export function applyEffect(state, sourceId, targetId, effect) {
+  if (!effect || typeof effect !== 'object') return state
+
+  const type = effect.type
+  const resolvedTargetId = resolveTargetId(effect, sourceId, targetId)
+  if (!resolvedTargetId) return state
+
+  const unit = getUnit(state, resolvedTargetId)
+  let nextUnit
+
+  switch (type) {
+    case 'damage': {
+      const amount = Math.max(0, Number(effect.value) || 0)
+      const hp = Math.max(0, (Number(unit.hp) || 0) - amount)
+      nextUnit = { ...unit, hp }
+      break
+    }
+
+    case 'heal': {
+      const maxHp = Number(unit.max_hp) || DEFAULT_MAX_HP
+      const amount = effect.full === true
+        ? Math.max(0, maxHp - (Number(unit.hp) || 0))
+        : effect.percent != null
+          ? Math.max(0, maxHp * Number(effect.percent))
+          : Math.max(0, Number(effect.value) || 0)
+      const hp = clamp((Number(unit.hp) || 0) + amount, 0, maxHp)
+      nextUnit = { ...unit, hp }
+      break
+    }
+
+    case 'resource_add': {
+      const resource = effect.resource || 'energy'
+      const amount = Number(effect.value) || 0
+      if (unit.resources && typeof unit.resources === 'object') {
+        const resources = { ...unit.resources }
+        resources[resource] = (Number(resources[resource]) || 0) + amount
+        nextUnit = { ...unit, resources }
+      } else {
+        nextUnit = { ...unit, [resource]: (Number(unit[resource]) || 0) + amount }
+      }
+      break
+    }
+
+    case 'resource_set': {
+      const resource = effect.resource || 'energy'
+      const value = Number(effect.value) || 0
+      if (unit.resources && typeof unit.resources === 'object') {
+        const resources = { ...unit.resources, [resource]: value }
+        nextUnit = { ...unit, resources }
+      } else {
+        nextUnit = { ...unit, [resource]: value }
+      }
+      break
+    }
+
+    case 'state_add':
+    case 'battle_state_add':
+      return applyBattleStateAdd(state, sourceId, targetId, effect)
+
+    case 'state_remove':
+    case 'battle_state_remove': {
+      if (!effect.state) return state
+      const states = Array.isArray(unit.states) ? unit.states : []
+      nextUnit = { ...unit, states: states.filter((battleState) => battleState?.type !== effect.state) }
+      break
+    }
+
+    case 'status_add': {
+      const id = effect.status
+      if (!id) return state
+      const stacksToAdd = Math.max(1, Number(effect.stacks) || 1)
+      const duration = Math.max(0, Number(effect.duration) || 0)
+      const statuses = Array.isArray(unit.statuses) ? unit.statuses : []
+      const index = statuses.findIndex((status) => status?.id === id)
+
+      if (index === -1) {
+        nextUnit = {
+          ...unit,
+          statuses: [...statuses, { id, stacks: stacksToAdd, duration, data: effect.data || {} }],
+        }
+      } else {
+        const nextStatuses = statuses.map((status, statusIndex) => {
+          if (statusIndex !== index) return status
+          return {
+            ...status,
+            stacks: (Number(status.stacks) || 0) + stacksToAdd,
+            duration: Math.max(Number(status.duration) || 0, duration),
+            data: { ...(status.data || {}), ...(effect.data || {}) },
+          }
+        })
+        nextUnit = { ...unit, statuses: nextStatuses }
+      }
+      break
+    }
+
+    case 'status_remove': {
+      if (!effect.status) return state
+      const statuses = Array.isArray(unit.statuses) ? unit.statuses : []
+      nextUnit = { ...unit, statuses: statuses.filter((status) => status?.id !== effect.status) }
+      break
+    }
+
+    case 'battle_state_decrement_all': {
+      const players = Object.fromEntries(
+        Object.entries(state?.players || {}).map(([id, player]) => {
+          const states = Array.isArray(player?.states)
+            ? player.states
+                .map((battleState) => ({
+                  ...battleState,
+                  turns: Number(battleState.turns) - 1,
+                }))
+                .filter((battleState) => battleState.turns > 0)
+            : []
+
+          return [id, { ...player, states }]
+        }),
+      )
+      return { ...state, players }
+    }
+
+    case 'flag_set': {
+      if (!effect.flag) return state
+      nextUnit = {
+        ...unit,
+        flags: { ...(unit.flags || {}), [effect.flag]: effect.value ?? true },
+      }
+      break
+    }
+
+    case 'flag_remove': {
+      if (!effect.flag) return state
+      const flags = { ...(unit.flags || {}) }
+      delete flags[effect.flag]
+      nextUnit = { ...unit, flags }
+      break
+    }
+
+    default:
+      return state
+  }
+
+  return setUnit(state, resolvedTargetId, nextUnit)
+}
+
+export function applyEffects(state, sourceId, targetId, effects = []) {
+  if (!Array.isArray(effects)) return state
+  return effects.reduce((currentState, effect) => applyEffect(currentState, sourceId, targetId, effect), state)
+}
