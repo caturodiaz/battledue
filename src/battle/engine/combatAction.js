@@ -1,7 +1,9 @@
 import { executeAbilityAction } from './abilityAction.js'
 import { executeBasicAttack } from './attackAction.js'
 import { executeBasicAction } from './actions.js'
+import { applyEffect } from './effects.js'
 import { resolveCombatAttack } from './attackResolution.js'
+import { fromEngineState, toEngineState } from './stateAdapter.js'
 
 function resolveAttack(state, sourceId, targetId, options = {}) {
   return resolveCombatAttack(state, sourceId, targetId, {
@@ -27,6 +29,20 @@ function getAbilityCombat(ability = {}) {
   }
 }
 
+function applyMissEnergy(result, sourceId, isUltimate = false) {
+  if (result?.attack?.type !== 'miss' || isUltimate) return result
+
+  const engineState = toEngineState(result.state)
+  const nextState = applyEffect(engineState, sourceId, sourceId, {
+    type: 'resource_add',
+    target: 'source',
+    resource: 'energy',
+    value: 8,
+  })
+
+  return { ...result, state: fromEngineState(nextState) }
+}
+
 export function executeCombatAction(state, sourceId, targetId, action = {}) {
   const {
     type = 'basic',
@@ -45,7 +61,7 @@ export function executeCombatAction(state, sourceId, targetId, action = {}) {
       critical: attackResult.critical,
       hit: attackResult.hit,
     })
-    return { ...result, attack: attackResult }
+    return applyMissEnergy({ ...result, attack: attackResult }, sourceId)
   }
 
   if (type === 'ability' || type === 'ultimate') {
@@ -74,7 +90,7 @@ export function executeCombatAction(state, sourceId, targetId, action = {}) {
       ability,
     })
 
-    return { ...abilityResult, attack: attackResult }
+    return applyMissEnergy({ ...abilityResult, attack: attackResult }, sourceId, attackConfig.ultimate)
   }
 
   throw new Error(`Unsupported combat action: ${type}`)
