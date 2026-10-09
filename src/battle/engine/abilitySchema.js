@@ -13,7 +13,6 @@ const VALID_TRIGGER_EVENTS = new Set([
 ])
 
 const VALID_EFFECT_TYPES = new Set([
-  'damage',
   'damage_resolve',
   'heal',
   'resource_add',
