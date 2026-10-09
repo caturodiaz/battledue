@@ -21,9 +21,9 @@ function getAbilityCombat(ability = {}) {
   return {
     ...(ability.combat || {}),
     multiplier: ability.combat?.multiplier ?? damageEffect?.multiplier ?? 1,
-    guaranteedHit: ability.combat?.guaranteedHit ?? ability.guaranteedHit,
-    criticalBonus: ability.combat?.criticalBonus ?? ability.criticalBonus ?? 0,
-    ultimate: ability.combat?.ultimate ?? ability.ultimate,
+    guaranteedHit: ability.combat?.guaranteedHit,
+    criticalBonus: ability.combat?.criticalBonus ?? 0,
+    ultimate: ability.combat?.ultimate,
   }
 }
 
@@ -31,7 +31,6 @@ export function executeCombatAction(state, sourceId, targetId, action = {}) {
   const {
     type = 'basic',
     ability = null,
-    abilityOptions = {},
     attackOptions = {},
     ...options
   } = action
@@ -56,10 +55,10 @@ export function executeCombatAction(state, sourceId, targetId, action = {}) {
     const attackConfig = {
       ...abilityCombat,
       ...attackOptions,
-      multiplier: attackOptions.multiplier ?? abilityOptions.multiplier ?? abilityCombat.multiplier ?? 1,
-      energyCost: attackOptions.energyCost ?? abilityOptions.energyCost ?? ability?.costs?.energy ?? 0,
-      guaranteedHit: attackOptions.guaranteedHit ?? abilityOptions.guaranteedHit ?? abilityCombat.guaranteedHit,
-      criticalBonus: attackOptions.criticalBonus ?? abilityOptions.criticalBonus ?? abilityCombat.criticalBonus ?? 0,
+      multiplier: attackOptions.multiplier ?? abilityCombat.multiplier ?? 1,
+      energyCost: attackOptions.energyCost ?? ability?.costs?.energy ?? 0,
+      guaranteedHit: attackOptions.guaranteedHit ?? abilityCombat.guaranteedHit,
+      criticalBonus: attackOptions.criticalBonus ?? abilityCombat.criticalBonus ?? 0,
       ultimate: type === 'ultimate' || Boolean(attackOptions.ultimate) || Boolean(abilityCombat.ultimate),
     }
 
