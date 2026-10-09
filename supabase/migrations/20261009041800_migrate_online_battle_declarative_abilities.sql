@@ -362,7 +362,7 @@ begin
           end if;
           v_total_healing := v_total_healing + greatest(0, v_amount);
 
-        elsif v_effect_type in ('state_add', 'state_stack_add') then
+        elsif v_effect_type = 'state_add' then
           v_state_type := coalesce(v_effect->>'state', '');
           if v_state_type = '' then raise exception 'El efecto % necesita state', v_effect_type; end if;
           v_state_turns := greatest(0, coalesce((v_effect->>'duration')::integer, (v_effect->>'turns')::integer, 1));
@@ -399,7 +399,7 @@ begin
             v_defender_states := v_target_states;
           end if;
 
-        elsif v_effect_type in ('state_remove', 'state_stack_remove') then
+        elsif v_effect_type = 'state_remove' then
           v_state_type := coalesce(v_effect->>'state', '');
           if v_state_type <> '' then
             v_target_states := case when v_target_id = v_attacker_id then v_attacker_states else v_defender_states end;
