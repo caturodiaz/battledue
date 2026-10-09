@@ -377,7 +377,7 @@ function BattlePage() {
         setBattleNotification({ id: crypto.randomUUID(), icon: '🦎', title: '¡METAMORFOSIS!', text: `Tokata adopta la forma de ${currentDefender.name}`, type: 'system' })
         setBattleStates(previous => {
           const engineState = { players: Object.fromEntries(Object.entries(previous).map(([id, states]) => [id, { states }])) }
-          return Object.fromEntries(Object.entries(endBattleTurn(engineState).players).map(([id, player]) => [id, player.states]))
+          return Object.fromEntries(Object.entries(endBattleTurn(engineState, currentAttacker.id).players).map(([id, player]) => [id, player.states]))
         })
         setCurrentAttackerId(currentDefender.id)
         setTurn(previousTurn => previousTurn + 1)
