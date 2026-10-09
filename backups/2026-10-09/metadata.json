@@ -1,6 +1,6 @@
 {
-  "backupDate": "2026-09-28T09:21:12.786492+00:00",
+  "backupDate": "2026-10-09T10:02:01.917762+00:00",
   "table": "public.characters",
-  "count": 12,
+  "count": 14,
   "charactersFile": "characters.json"
 }
