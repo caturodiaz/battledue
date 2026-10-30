@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import './LegacyImageMigrationButton.css'
 
 function LegacyImageMigrationButton() {
   const [isMigrating, setIsMigrating] = useState(false)

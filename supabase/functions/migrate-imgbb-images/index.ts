@@ -85,7 +85,10 @@ Deno.serve(async (request) => {
 
   async function migrateUrl(url, character, field) {
     if (!isImgBbUrl(url)) return url
-    if (migratedByUrl.has(url)) return migratedByUrl.get(url)
+    if (migratedByUrl.has(url)) {
+    migratedReferences += 1
+    return migratedByUrl.get(url)
+  }
 
     try {
       const response = await fetch(url, { redirect: 'follow' })
