@@ -16,14 +16,14 @@ const EXTENSIONS = {
   'image/gif': 'gif',
 }
 
-function jsonResponse(body, status = 200) {
+function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 }
 
-function isImgBbUrl(value) {
+function isImgBbUrl(value: unknown): value is string {
   if (typeof value !== 'string' || !value) return false
   try {
     return new URL(value).hostname === 'i.ibb.co'
@@ -78,12 +78,12 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'No se pudieron consultar los personajes.' }, 500)
   }
 
-  const migratedByUrl = new Map()
-  const failures = []
+  const migratedByUrl = new Map<string, string>()
+  const failures: Array<{ character: string; field: string; reason: string }> = []
   let migratedReferences = 0
   let migratedFiles = 0
 
-  async function migrateUrl(url, character, field) {
+  async function migrateUrl(url: unknown, character: { id: string; name: string }, field: string): Promise<string> {
     if (!isImgBbUrl(url)) return url
     if (migratedByUrl.has(url)) {
     migratedReferences += 1
@@ -130,7 +130,7 @@ Deno.serve(async (request) => {
       failures.push({
         character: character.name,
         field,
-        reason: error?.message || 'Error desconocido.',
+        reason: error instanceof Error ? error.message : 'Error desconocido.',
       })
       return url
     }
