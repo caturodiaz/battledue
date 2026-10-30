@@ -41,6 +41,17 @@ test('executes a basic attack as one complete combat action', () => {
   assert.equal(result.state.players.attacker.energy, 63)
 })
 
+test('grants energy after a missed basic attack', () => {
+  const result = executeCombatAction(createState(), 'attacker', 'defender', {
+    type: 'basic',
+    attackOptions: { random: () => 0.99 },
+  })
+
+  assert.equal(result.attack.type, 'miss')
+  assert.equal(result.state.players.defender.hp, 100)
+  assert.equal(result.state.players.attacker.energy, 58)
+})
+
 test('executes a declarative ability without exposing combat resolution to the caller', () => {
   const result = executeCombatAction(createState(), 'attacker', 'defender', {
     type: 'ability',
@@ -93,7 +104,7 @@ test('executes a declarative status ability through the unified combat action', 
   ])
 })
 
-test('executes ability effects after a miss without applying hit-dependent effects', () => {
+test('executes ability effects after a miss, grants miss energy, and skips hit-dependent effects', () => {
   const result = executeCombatAction(createState(), 'attacker', 'defender', {
     type: 'ability',
     ability: {
@@ -115,7 +126,7 @@ test('executes ability effects after a miss without applying hit-dependent effec
   assert.equal(result.attack.type, 'miss')
   assert.equal(result.state.players.defender.hp, 100)
   assert.deepEqual(result.state.players.defender.states, [])
-  assert.equal(result.state.players.attacker.resources.energy, 35)
+  assert.equal(result.state.players.attacker.resources.energy, 43)
   assert.deepEqual(result.state.players.attacker.states, [
     { type: 'rage', turns: 2, stacks: 1 },
   ])
