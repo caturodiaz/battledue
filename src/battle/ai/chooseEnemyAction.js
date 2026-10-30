@@ -1,13 +1,14 @@
 import {
   AI_STYLES,
   DEFAULT_AI_STYLE,
-} from './aiConfig'
+} from './aiConfig.js'
 
 import {
   evaluateBattleState,
-} from './evaluateBattleState'
+} from './evaluateBattleState.js'
+import { getAbilitySummary } from '../engine/abilityDefinition.js'
 
-function weightedRandom(options) {
+function weightedRandom(options, random = Math.random) {
   const validOptions = options.filter(
     (option) => option.weight > 0
   )
@@ -23,13 +24,13 @@ function weightedRandom(options) {
       0
     )
 
-  let random =
-    Math.random() * totalWeight
+  let roll =
+    random() * totalWeight
 
   for (const option of validOptions) {
-    random -= option.weight
+    roll -= option.weight
 
-    if (random <= 0) {
+    if (roll <= 0) {
       return option.value
     }
   }
@@ -39,14 +40,22 @@ function weightedRandom(options) {
   ].value
 }
 
-function randomAbilityIndex(abilities) {
-  if (!abilities.length) {
-    return 0
+function getAbilityWeight(ability, battleState, attackerHpPercent, defenderHpPercent) {
+  const summary = getAbilitySummary(ability)
+  let weight = 10
+
+  if (summary.dealsDamage) weight += Math.max(1, summary.multiplier) * 10
+  if (summary.dealsDamage && battleState.defenderIsLow) weight += 20
+  if (summary.dealsDamage && battleState.defenderIsCritical) weight += 30
+  if (!summary.dealsDamage && attackerHpPercent <= 0.5) weight += 12
+  if (ability?.effects?.some((effect) => effect?.type === 'heal' && (effect.target === 'self' || effect.target === 'source'))) {
+    weight += attackerHpPercent <= 0.35 ? 35 : 10
+  }
+  if (ability?.effects?.some((effect) => effect?.type === 'state_add' && (effect.target === 'enemy' || effect.target === 'target'))) {
+    weight += defenderHpPercent <= 0.5 ? 15 : 8
   }
 
-  return Math.floor(
-    Math.random() * abilities.length
-  )
+  return weight
 }
 
 function clamp(value, min, max) {
@@ -72,6 +81,7 @@ export function chooseEnemyAction({
   abilities = [],
 
   aiStyle = DEFAULT_AI_STYLE,
+  random = Math.random,
 }) {
   const state =
     evaluateBattleState({
@@ -86,12 +96,6 @@ export function chooseEnemyAction({
   const style =
     AI_STYLES[aiStyle] ||
     AI_STYLES[DEFAULT_AI_STYLE]
-
-  /*
-   * =========================================
-   * INFORMACIÓN DEL COMBATE
-   * =========================================
-   */
 
   const attackerHpPercent =
     attackerMaxHp > 0
@@ -112,10 +116,6 @@ export function chooseEnemyAction({
 
   const attackerIsLosing =
     hpDifference < -0.2
-
-  const attackerHasAdvantage =
-    attackerHpPercent >
-    defenderHpPercent
 
   const attackerStats =
     attacker?.profile?.stats || {}
@@ -148,17 +148,6 @@ export function chooseEnemyAction({
       defenderStats.speed
     ) || 0
 
-  /*
-   * =========================================
-   * PUNTUACIÓN BASE DE LAS ACCIONES
-   * =========================================
-   *
-   * En lugar de elegir únicamente según
-   * pesos fijos, cada acción comienza con
-   * una puntuación y luego se modifica
-   * según la situación.
-   */
-
   let basicScore =
     30 + style.attack
 
@@ -171,14 +160,6 @@ export function chooseEnemyAction({
   let ultimateScore =
     0 + style.ultimate
 
-  /*
-   * =========================================
-   * ATAQUE BÁSICO
-   * =========================================
-   */
-
-  // Si el rival está muy debilitado,
-  // atacar gana mucho valor.
   if (state.defenderIsLow) {
     basicScore += 25
   }
@@ -187,42 +168,32 @@ export function chooseEnemyAction({
     basicScore += 35
   }
 
-  // Si estamos ganando ampliamente,
-  // seguir presionando es razonable.
   if (attackerIsWinning) {
     basicScore += 10
   }
 
-  // Una IA con mucha fuerza tiene mayor
-  // incentivo para atacar.
   basicScore +=
     attackerStrength * 2
 
-  /*
-   * =========================================
-   * HABILIDADES
-   * =========================================
-   */
+  const availableAbilities = abilities
+    .map((ability, abilityIndex) => ({
+      ability,
+      abilityIndex,
+      summary: getAbilitySummary(ability, { energyCost: 25 }),
+    }))
+    .filter(({ summary }) => attackerEnergy >= summary.energyCost)
 
-  const canUseAbility =
-    abilities.length > 0 &&
-    attackerEnergy >= 25
+  const canUseAbility = availableAbilities.length > 0
 
   if (!canUseAbility) {
     abilityScore = 0
   } else {
-    // Las habilidades son más interesantes
-    // cuando el ataque básico no alcanza.
     abilityScore += 20
 
-    // Mucha energía disponible incentiva
-    // gastar parte de ella.
     if (attackerEnergy >= 50) {
       abilityScore += 10
     }
 
-    // Si el rival está debilitado,
-    // las habilidades sirven para rematar.
     if (state.defenderIsLow) {
       abilityScore += 20
     }
@@ -231,22 +202,11 @@ export function chooseEnemyAction({
       abilityScore += 30
     }
 
-    // Si estamos perdiendo, una habilidad
-    // puede ser una buena forma de recuperar
-    // la iniciativa.
     if (attackerIsLosing) {
       abilityScore += 15
     }
   }
 
-  /*
-   * =========================================
-   * DEFENSA
-   * =========================================
-   */
-
-  // La defensa empieza a importar mucho
-  // cuando nuestra vida baja.
   if (attackerHpPercent <= 0.5) {
     defendScore += 25
   }
@@ -259,40 +219,22 @@ export function chooseEnemyAction({
     defendScore += 40
   }
 
-  // Si estamos perdiendo claramente,
-  // sobrevivir puede ser más importante
-  // que hacer daño.
   if (attackerIsLosing) {
     defendScore += 20
   }
 
-  // Una defensa alta hace que una estrategia
-  // defensiva tenga algo más de sentido.
   defendScore +=
     attackerDefense * 2
 
-  // Si el rival está casi muerto,
-  // no queremos desperdiciar el turno
-  // defendiendo.
   if (state.defenderIsCritical) {
     defendScore -= 35
   }
 
-  /*
-   * =========================================
-   * DEFINITIVA
-   * =========================================
-   */
-
   if (!state.ultimateReady) {
     ultimateScore = 0
   } else {
-    // Tener la definitiva disponible ya
-    // representa una opción muy poderosa.
     ultimateScore += 55
 
-    // Si puede acabar el combate,
-    // aumenta muchísimo su prioridad.
     if (
       state.defenderIsCritical ||
       defenderHpPercent <= 0.25
@@ -300,23 +242,14 @@ export function chooseEnemyAction({
       ultimateScore += 45
     }
 
-    // Si estamos perdiendo, una definitiva
-    // puede servir para cambiar la situación.
     if (attackerIsLosing) {
       ultimateScore += 20
     }
 
-    // Si estamos ganando ampliamente,
-    // no necesitamos necesariamente gastar
-    // nuestra definitiva inmediatamente.
     if (attackerIsWinning) {
       ultimateScore -= 10
     }
 
-    /*
-     * Un pequeño componente basado en las
-     * características del personaje.
-     */
     ultimateScore +=
       attackerStrength * 2
 
@@ -324,15 +257,6 @@ export function chooseEnemyAction({
       attackerSpeed
   }
 
-  /*
-   * =========================================
-   * EVITAR COMPORTAMIENTOS ABSURDOS
-   * =========================================
-   */
-
-  // Si tenemos muy poca vida, atacar sin
-  // considerar defensa deja de ser una
-  // buena estrategia.
   if (
     attackerHpPercent <= 0.2
   ) {
@@ -340,9 +264,6 @@ export function chooseEnemyAction({
     basicScore -= 10
   }
 
-  // Si el rival tiene muchísima defensa,
-  // una habilidad puede resultar más
-  // interesante que un golpe básico.
   if (
     defenderDefense >= 7 &&
     canUseAbility
@@ -351,9 +272,6 @@ export function chooseEnemyAction({
     basicScore -= 5
   }
 
-  // Una diferencia grande de velocidad
-  // hace que atacar sea ligeramente más
-  // atractivo.
   if (
     attackerSpeed >
     defenderSpeed + 2
@@ -362,12 +280,6 @@ export function chooseEnemyAction({
     abilityScore +=
       canUseAbility ? 5 : 0
   }
-
-  /*
-   * =========================================
-   * NORMALIZACIÓN
-   * =========================================
-   */
 
   basicScore =
     clamp(basicScore, 1, 150)
@@ -381,18 +293,9 @@ export function chooseEnemyAction({
   ultimateScore =
     clamp(ultimateScore, 0, 180)
 
-  /*
-   * =========================================
-   * PEQUEÑA VARIACIÓN ALEATORIA
-   * =========================================
-   *
-   * La IA no siempre elegirá exactamente
-   * la misma acción en la misma situación.
-   */
-
   const variation = () =>
     0.85 +
-    Math.random() * 0.3
+    random() * 0.3
 
   const options = [
     {
@@ -421,23 +324,20 @@ export function chooseEnemyAction({
   ]
 
   const selectedAction =
-    weightedRandom(options)
-
-  /*
-   * =========================================
-   * RESULTADO
-   * =========================================
-   */
+    weightedRandom(options, random)
 
   if (
     selectedAction === 'ability'
   ) {
     return {
       type: 'ability',
-      abilityIndex:
-        randomAbilityIndex(
-          abilities
-        ),
+      abilityIndex: weightedRandom(
+        availableAbilities.map(({ ability, abilityIndex }) => ({
+          value: abilityIndex,
+          weight: getAbilityWeight(ability, state, attackerHpPercent, defenderHpPercent),
+        })),
+        random,
+      ),
     }
   }
 
