@@ -26,7 +26,8 @@ function jsonResponse(body: unknown, status = 200) {
 function isImgBbUrl(value: unknown): value is string {
   if (typeof value !== 'string' || !value) return false
   try {
-    return new URL(value).hostname === 'i.ibb.co'
+    const parsed = new URL(value)
+    return parsed.protocol === 'https:' && parsed.hostname === 'i.ibb.co'
   } catch {
     return false
   }
@@ -91,12 +92,29 @@ Deno.serve(async (request) => {
   }
 
     try {
-      const response = await fetch(url, { redirect: 'follow' })
-      if (!response.ok) throw new Error(`ImgBB respondió HTTP ${response.status}.`)
+      let requestUrl = new URL(url)
+      let response = await fetch(requestUrl, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(15000),
+      })
 
-      const finalUrl = new URL(response.url)
-      if (finalUrl.hostname !== 'i.ibb.co') {
-        throw new Error('La URL redirigió a un dominio no permitido.')
+      for (let redirectCount = 0; response.status >= 300 && response.status < 400; redirectCount += 1) {
+        if (redirectCount >= 3) throw new Error('Demasiadas redirecciones.')
+        const location = response.headers.get('location')
+        if (!location) throw new Error('Redirección sin destino.')
+        requestUrl = new URL(location, requestUrl)
+        if (requestUrl.protocol !== 'https:' || requestUrl.hostname !== 'i.ibb.co') {
+          throw new Error('La URL redirigió a un dominio no permitido.')
+        }
+        response = await fetch(requestUrl, {
+          redirect: 'manual',
+          signal: AbortSignal.timeout(15000),
+        })
+      }
+
+      if (!response.ok) throw new Error(`ImgBB respondió HTTP ${response.status}.`)
+      if (requestUrl.protocol !== 'https:' || requestUrl.hostname !== 'i.ibb.co') {
+        throw new Error('La URL apunta a un dominio no permitido.')
       }
 
       const contentType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
