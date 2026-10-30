@@ -17,13 +17,15 @@ const VALID_EFFECT_TYPES = new Set([
   'damage_resolve',
   'heal',
   'resource_add',
+  'resource_set',
   'state_add',
   'state_remove',
-  'modifier',
-  'delay',
-  'snapshot',
-  'restore_snapshot',
-  'transform',
+  'battle_state_add',
+  'battle_state_remove',
+  'status_add',
+  'status_remove',
+  'flag_set',
+  'flag_remove',
 ])
 
 export function validateAbility(ability = {}) {
@@ -37,9 +39,10 @@ export function validateAbility(ability = {}) {
 
   for (const trigger of ability.triggers || []) {
     if (!VALID_TRIGGER_EVENTS.has(trigger?.event)) errors.push(`invalid trigger event: ${trigger?.event}`)
-    if (!Array.isArray(trigger?.effects) && !Array.isArray(trigger?.modifiers)) {
-      errors.push(`trigger ${trigger?.event || 'unknown'} needs effects or modifiers`)
+    if (!Array.isArray(trigger?.effects) && !Array.isArray(trigger?.events)) {
+      errors.push(`trigger ${trigger?.event || 'unknown'} needs effects or events`)
     }
+    if (Array.isArray(trigger?.modifiers) && trigger.modifiers.length > 0) errors.push(`unsupported trigger modifiers at ${trigger?.event || 'unknown'}`)
   }
 
   const validateEffects = (effects, location) => {

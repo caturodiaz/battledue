@@ -1,13 +1,14 @@
 import {
   AI_STYLES,
   DEFAULT_AI_STYLE,
-} from './aiConfig'
+} from './aiConfig.js'
 
 import {
   evaluateBattleState,
-} from './evaluateBattleState'
+} from './evaluateBattleState.js'
+import { getAbilitySummary } from '../engine/abilityDefinition.js'
 
-function weightedRandom(options) {
+function weightedRandom(options, random = Math.random) {
   const validOptions = options.filter(
     (option) => option.weight > 0
   )
@@ -23,13 +24,13 @@ function weightedRandom(options) {
       0
     )
 
-  let random =
-    Math.random() * totalWeight
+  let roll =
+    random() * totalWeight
 
   for (const option of validOptions) {
-    random -= option.weight
+    roll -= option.weight
 
-    if (random <= 0) {
+    if (roll <= 0) {
       return option.value
     }
   }
@@ -39,14 +40,22 @@ function weightedRandom(options) {
   ].value
 }
 
-function randomAbilityIndex(abilities) {
-  if (!abilities.length) {
-    return 0
+function getAbilityWeight(ability, battleState, attackerHpPercent, defenderHpPercent) {
+  const summary = getAbilitySummary(ability)
+  let weight = 10
+
+  if (summary.dealsDamage) weight += Math.max(1, summary.multiplier) * 10
+  if (summary.dealsDamage && battleState.defenderIsLow) weight += 20
+  if (summary.dealsDamage && battleState.defenderIsCritical) weight += 30
+  if (!summary.dealsDamage && attackerHpPercent <= 0.5) weight += 12
+  if (ability?.effects?.some((effect) => effect?.type === 'heal' && (effect.target === 'self' || effect.target === 'source'))) {
+    weight += attackerHpPercent <= 0.35 ? 35 : 10
+  }
+  if (ability?.effects?.some((effect) => effect?.type === 'state_add' && (effect.target === 'enemy' || effect.target === 'target'))) {
+    weight += defenderHpPercent <= 0.5 ? 15 : 8
   }
 
-  return Math.floor(
-    Math.random() * abilities.length
-  )
+  return weight
 }
 
 function clamp(value, min, max) {
@@ -72,6 +81,7 @@ export function chooseEnemyAction({
   abilities = [],
 
   aiStyle = DEFAULT_AI_STYLE,
+  random = Math.random,
 }) {
   const state =
     evaluateBattleState({
@@ -165,9 +175,15 @@ export function chooseEnemyAction({
   basicScore +=
     attackerStrength * 2
 
-  const canUseAbility =
-    abilities.length > 0 &&
-    attackerEnergy >= 25
+  const availableAbilities = abilities
+    .map((ability, abilityIndex) => ({
+      ability,
+      abilityIndex,
+      summary: getAbilitySummary(ability, { energyCost: 25 }),
+    }))
+    .filter(({ summary }) => attackerEnergy >= summary.energyCost)
+
+  const canUseAbility = availableAbilities.length > 0
 
   if (!canUseAbility) {
     abilityScore = 0
@@ -279,7 +295,7 @@ export function chooseEnemyAction({
 
   const variation = () =>
     0.85 +
-    Math.random() * 0.3
+    random() * 0.3
 
   const options = [
     {
@@ -308,17 +324,20 @@ export function chooseEnemyAction({
   ]
 
   const selectedAction =
-    weightedRandom(options)
+    weightedRandom(options, random)
 
   if (
     selectedAction === 'ability'
   ) {
     return {
       type: 'ability',
-      abilityIndex:
-        randomAbilityIndex(
-          abilities
-        ),
+      abilityIndex: weightedRandom(
+        availableAbilities.map(({ ability, abilityIndex }) => ({
+          value: abilityIndex,
+          weight: getAbilityWeight(ability, state, attackerHpPercent, defenderHpPercent),
+        })),
+        random,
+      ),
     }
   }
 

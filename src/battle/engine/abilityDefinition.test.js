@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { createAbilityAction } from './abilityDefinition.js'
+import { createAbilityAction, getAbilitySummary } from './abilityDefinition.js'
 
 test('creates an engine action from a declarative ability', () => {
   const action = createAbilityAction({
@@ -49,4 +49,24 @@ test('rejects an ability without an identity', () => {
     () => createAbilityAction({ effects: [{ type: 'damage_resolve', multiplier: 1 }] }),
     /Invalid ability/,
   )
+})
+
+test('derives shared combat presentation from structured effects', () => {
+  const summary = getAbilitySummary({
+    id: 'healing-wave',
+    name: 'Healing Wave',
+    costs: { energy: 30 },
+    effects: [{ type: 'heal', target: 'self', percent: 0.5 }],
+  }, { criticalBonus: 5 })
+
+  assert.deepEqual(summary, {
+    id: 'healing-wave',
+    name: 'Healing Wave',
+    energyCost: 30,
+    multiplier: 1,
+    guaranteedHit: false,
+    criticalBonus: 5,
+    ultimate: false,
+    dealsDamage: false,
+  })
 })

@@ -13,7 +13,7 @@ test('validates a basic declarative ability', () => {
   assert.deepEqual(validateAbility(ability), { valid: true, errors: [] })
 })
 
-test('validates reactive triggers and advanced effects', () => {
+test('rejects declarative effects and trigger modifiers without an executor', () => {
   const ability = {
     id: 'exposicion-maxima',
     name: 'EXPOSICIÓN MÁXIMA',
@@ -30,7 +30,16 @@ test('validates reactive triggers and advanced effects', () => {
     ],
   }
 
-  assert.equal(validateAbility(ability).valid, true)
+  const result = validateAbility(ability)
+  assert.equal(result.valid, false)
+  assert.deepEqual(result.errors, [
+    'trigger before_receive_damage needs effects or events',
+    'unsupported trigger modifiers at before_receive_damage',
+    'invalid effect type at effects: snapshot',
+    'invalid effect type at effects: delay',
+    'invalid effect type at effects: restore_snapshot',
+    'invalid effect type at effects: transform',
+  ])
 })
 
 test('rejects unknown trigger and effect types', () => {

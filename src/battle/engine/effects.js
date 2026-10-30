@@ -1,3 +1,5 @@
+import { BATTLE_STATES } from './battleStateConfig.js'
+
 const DEFAULT_MAX_HP = 999999999
 
 function clamp(value, min, max) {
@@ -31,9 +33,10 @@ function applyBattleStateAdd(state, sourceId, targetId, effect) {
 
   const unit = getUnit(state, resolvedTargetId)
   const targetStates = Array.isArray(unit.states) ? unit.states : []
+  const config = BATTLE_STATES[effect.state] || {}
   const turns = Math.max(
     0,
-    Number(effect.duration ?? effect.turns) || 0,
+    Number(effect.duration ?? effect.turns ?? config.duration) || 0,
   )
   const stacks = Math.max(1, Number(effect.stacks) || 1)
   const existingIndex = targetStates.findIndex((battleState) => battleState?.type === effect.state)
@@ -43,7 +46,7 @@ function applyBattleStateAdd(state, sourceId, targetId, effect) {
   if (existingIndex === -1) {
     nextUnit = {
       ...unit,
-      states: [...targetStates, { type: effect.state, turns, stacks }],
+      states: [...targetStates, { type: effect.state, turns, stacks: Math.min(config.maxStacks ?? Infinity, stacks) }],
     }
   } else {
     const nextStates = targetStates.map((battleState, index) => {
@@ -52,8 +55,8 @@ function applyBattleStateAdd(state, sourceId, targetId, effect) {
       return {
         ...battleState,
         turns: Math.max(Number(battleState.turns) || 0, turns),
-        stacks: battleState.type === 'bleeding'
-          ? Math.min(3, (Number(battleState.stacks) || 0) + stacks)
+        stacks: config.stacking === 'add'
+          ? Math.min(config.maxStacks ?? Infinity, (Number(battleState.stacks) || 0) + stacks)
           : Number(battleState.stacks) || stacks,
       }
     })

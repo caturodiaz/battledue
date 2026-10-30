@@ -149,6 +149,21 @@ test('declarative state application refreshes duration and stacks bleeding', () 
   ])
 })
 
+test('declarative states use configuration defaults and stack limits', () => {
+  const result = executeAbilityAction(createState(), 'attacker', 'defender', {
+    ability: {
+      id: 'bleeding-defaults',
+      name: 'Bleeding Defaults',
+      effects: [{ type: 'state_add', target: 'enemy', state: 'bleeding', stacks: 5 }],
+    },
+    combatResult: { hit: true },
+  })
+
+  assert.deepEqual(result.state.players.defender.states, [
+    { type: 'bleeding', turns: 3, stacks: 3 },
+  ])
+})
+
 test('declarative percentage and full healing clamp at max hp', () => {
   const state = createState()
   state.players.attacker.hp = 60

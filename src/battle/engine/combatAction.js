@@ -1,4 +1,5 @@
 import { executeAbilityAction } from './abilityAction.js'
+import { getAbilitySummary } from './abilityDefinition.js'
 import { executeBasicAttack } from './attackAction.js'
 import { executeBasicAction } from './actions.js'
 import { resolveCombatAttack } from './attackResolution.js'
@@ -9,22 +10,6 @@ function resolveAttack(state, sourceId, targetId, options = {}) {
     energyCost: 0,
     ...options,
   })
-}
-
-function getAbilityCombat(ability = {}) {
-  const effects = [
-    ...(Array.isArray(ability.effects) ? ability.effects : []),
-    ...(Array.isArray(ability.steps) ? ability.steps.flatMap((step) => step?.effects || []) : []),
-  ]
-  const damageEffect = effects.find((effect) => effect?.type === 'damage_resolve')
-
-  return {
-    ...(ability.combat || {}),
-    multiplier: ability.combat?.multiplier ?? damageEffect?.multiplier ?? 1,
-    guaranteedHit: ability.combat?.guaranteedHit,
-    criticalBonus: ability.combat?.criticalBonus ?? 0,
-    ultimate: ability.combat?.ultimate,
-  }
 }
 
 export function executeCombatAction(state, sourceId, targetId, action = {}) {
@@ -51,7 +36,7 @@ export function executeCombatAction(state, sourceId, targetId, action = {}) {
   if (type === 'ability' || type === 'ultimate') {
     if (!ability) throw new Error('Declarative ability is required')
 
-    const abilityCombat = getAbilityCombat(ability)
+    const abilityCombat = getAbilitySummary(ability)
     const attackConfig = {
       ...abilityCombat,
       ...attackOptions,
@@ -60,6 +45,7 @@ export function executeCombatAction(state, sourceId, targetId, action = {}) {
       guaranteedHit: attackOptions.guaranteedHit ?? abilityCombat.guaranteedHit,
       criticalBonus: attackOptions.criticalBonus ?? abilityCombat.criticalBonus ?? 0,
       ultimate: type === 'ultimate' || Boolean(attackOptions.ultimate) || Boolean(abilityCombat.ultimate),
+      skipDamage: attackOptions.skipDamage ?? !abilityCombat.dealsDamage,
     }
 
     const attackResult = resolveAttack(state, sourceId, targetId, attackConfig)

@@ -1,19 +1,25 @@
+import { BATTLE_STATES } from './battleStateConfig.js'
+
 export function processBattleStateStartOfTurn(states = [], maxHp = 0) {
   const updatedStates = [...states]
-  const bleeding = updatedStates.find((state) => state?.type === 'bleeding')
-  if (!bleeding) {
-    return { states: updatedStates, hpChange: 0, messages: [] }
-  }
+  const messages = []
+  let hpChange = 0
 
-  const damagePerStack = Math.max(1, Math.floor(maxHp * 0.05))
-  const bleedingDamage = damagePerStack * bleeding.stacks
+  for (const state of updatedStates) {
+    const startTurn = BATTLE_STATES[state?.type]?.startTurn
+    if (!startTurn?.damagePercentPerStack) continue
+
+    const damage = Math.max(1, Math.floor(maxHp * startTurn.damagePercentPerStack)) * Math.max(1, Number(state.stacks) || 1)
+    hpChange -= damage
+    messages.push({
+      type: state.type,
+      text: (startTurn.message || '{state} causes {damage} damage.').replace('{damage}', damage),
+    })
+  }
 
   return {
     states: updatedStates,
-    hpChange: -bleedingDamage,
-    messages: [{
-      type: 'bleeding',
-      text: `🩸 Sangrado causa ${bleedingDamage} de daño.`,
-    }],
+    hpChange,
+    messages,
   }
 }
