@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import CharacterProfile from '../components/CharacterProfile'
 import ProfileEditor from '../components/ProfileEditor'
+import LegacyImageMigrationButton from '../components/LegacyImageMigrationButton'
 import { profileDefaults } from '../data/profileDefaults'
 import { useCharacters } from '../hooks/useCharacters'
 import { useAuth } from '../context/AuthContext'
@@ -197,6 +198,7 @@ function ProfilesPage() {
       <div className="page-heading">
         <div><p className="eyebrow">BattleDue</p><h1>Personajes</h1><p>Crea y administra todos los personajes de la serie.</p></div>
         <div className="character-actions">
+          {isAdmin && <LegacyImageMigrationButton />}
           <label className="field character-picker">Personaje seleccionado:
             <select value={selectedId} onChange={handleCharacterChange}>
               {characters.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
