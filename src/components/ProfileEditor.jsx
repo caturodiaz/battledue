@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import StorageImageField from './StorageImageField'
 import {
   profileDefaults,
   statLabels,
@@ -790,18 +791,12 @@ function ProfileEditor({
 
                 </div>
 
-                <input
-                  type="url"
-                  value={
-                    profile.primaryImage
-                  }
-                  onChange={(event) =>
-                    updateProfile(
-                      'primaryImage',
-                      event.target.value
-                    )
-                  }
-                  placeholder="https://i.ibb.co/..."
+                <StorageImageField
+                  label="URL o archivo de imagen"
+                  value={profile.primaryImage}
+                  onChange={(value) => updateProfile('primaryImage', value)}
+                  folder={`characters/${character.id || 'drafts'}/profile`}
+                  placeholder="https://..."
                 />
 
               </div>
@@ -845,8 +840,7 @@ function ProfileEditor({
             0 ? (
               <p className="profile-editor-empty">
                 Todavía no hay imágenes.
-                Agrega una URL de ImgBB o
-                cualquier otro hosting.
+                Pegá una URL existente o subí un archivo a Supabase Storage.
               </p>
             ) : (
               <div className="gallery-editor-list">
@@ -887,18 +881,12 @@ function ProfileEditor({
 
                       </div>
 
-                      <input
-                        type="url"
-                        value={
-                          image.url
-                        }
-                        onChange={(event) =>
-                          updateGalleryImage(
-                            image.id,
-                            event.target.value
-                          )
-                        }
-                        placeholder="https://i.ibb.co/..."
+                      <StorageImageField
+                        label="URL o archivo"
+                        value={image.url}
+                        onChange={(value) => updateGalleryImage(image.id, value)}
+                        folder={`characters/${character.id || 'drafts'}/gallery`}
+                        placeholder="https://..."
                       />
 
                     </div>
@@ -1231,18 +1219,12 @@ function ProfileEditor({
 
                 </div>
 
-                <input
-                  type="url"
-                  value={
-                    profile.ultimateImage
-                  }
-                  onChange={(event) =>
-                    updateProfile(
-                      'ultimateImage',
-                      event.target.value
-                    )
-                  }
-                  placeholder="https://i.ibb.co/..."
+                <StorageImageField
+                  label="URL o archivo de imagen"
+                  value={profile.ultimateImage}
+                  onChange={(value) => updateProfile('ultimateImage', value)}
+                  folder={`characters/${character.id || 'drafts'}/ultimate`}
+                  placeholder="https://..."
                 />
 
               </div>
